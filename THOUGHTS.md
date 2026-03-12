@@ -16,4 +16,4 @@ The traditional way used pen and paper techinque writing down topics, identifyin
 
 - Have a voice AI model that captures users voice recording, analyse their explanation, provide gaps and strengths. This solves the identifying gaps step.
 - Generate flash card questions related to the weaker gap points. This solves the knowledge refinement problem.
-- Enforce this is a habit by allowing streak based learning, review type flash cards
+- Enforce this as a habit by allowing streak based learning, review type flash cards, insights on their learning.
