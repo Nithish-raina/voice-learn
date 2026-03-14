@@ -181,3 +181,29 @@ The traditional way used pen and paper techinque writing down topics, identifyin
 ## ER Diagram
 
 ![ER Diagram](screenshots/voice-learn-er-diagram.png)
+
+## High level design
+
+### Overall system
+
+![Overall System](screenshots/voice-learn-overall-system-components.png)
+
+### Recording and analysis flow
+
+![Recording and analysis](screenshots/recording-and-analysis-flow.png)
+
+### RAG Indexing flow
+
+![RAG Indexing](screenshots/RAG-indexing-flow.png)
+
+### Chat Query Flow
+
+![Chat Query](screenshots/chat-query-flow.png)
+
+### Flashcard review flow
+
+![Flashcard review](screenshots/flashcard-review-flow.png)
+
+### Rate limiting flow
+
+![Rate limiting](screenshots/rate-limiting-flow.png)
