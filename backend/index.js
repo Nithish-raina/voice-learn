@@ -7,7 +7,7 @@ const app = express();
 const currentDir = path.dirname(new URL(import.meta.url).pathname);
 if (process.env.NODE_ENV !== "production") {
   const swaggerDocument = YAML.load(
-    path.join(currentDir, "../api-docs/swagger.yaml"),
+    path.join(currentDir, "../docs/swagger.yaml"),
   );
   app.use(
     "/api/docs",
