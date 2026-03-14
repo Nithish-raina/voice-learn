@@ -1,0 +1,28 @@
+{
+  "name": "voice-learn",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nithish-raina/voice-learn.git"
+  },
+  "author": "Nithish-raina",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Nithish-raina/voice-learn/issues"
+  },
+  "homepage": "https://github.com/Nithish-raina/voice-learn#readme",
+  "dependencies": {
+    "express": "^5.2.1",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
