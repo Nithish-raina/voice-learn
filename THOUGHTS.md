@@ -177,3 +177,7 @@ The traditional way used pen and paper techinque writing down topics, identifyin
 - The backend applies the SM-2 spaced repetition algorithm. Based on the rating, it recalculates the ease_factor (a multiplier that increases for Easy ratings and decreases for Forgot), calculates the new interval_days (previous interval multiplied by the ease factor, with minimums — Forgot always resets to 1 day), sets next_review_at to now plus the new interval in days, increments review_count, and sets last_reviewed_at to now. It updates the flashcard record in PostgreSQL and returns the updated card to the frontend.
 - The frontend shows the next card or, if all due cards are reviewed, shows the session complete summary.
 - Why SM-2 and not a simpler algorithm: SM-2 is the standard spaced repetition algorithm used by Anki and most flashcard systems. It's well-proven and not complex to implement — it's about 15 lines of code. A simpler approach like fixed intervals (1 day, 3 days, 7 days, 14 days) doesn't adapt to the user's actual recall ability per card. SM-2 makes easy cards appear less often and hard cards appear more often, which is more efficient for the user's time.
+
+## ER Diagram
+
+![ER Diagram](screenshots/voice-learn-er-diagram.png)
