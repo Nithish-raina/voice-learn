@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: VoiceLearn API
-  description: Voice-first learning journal with AI analysis, spaced repetition flashcards, and RAG-powered knowledge chat.
+  description: Voice-first learning with AI analysis, spaced repetition flashcards, and chat support with your knowledgebase of learnings.
   version: 1.0.0
 
 servers:
@@ -18,7 +18,7 @@ tags:
   - name: Flashcards
     description: Spaced repetition flashcard review
   - name: Chat
-    description: RAG-powered knowledge chat
+    description: Knowledge chat with your learning data
   - name: Insights
     description: Learning analytics and stats
 

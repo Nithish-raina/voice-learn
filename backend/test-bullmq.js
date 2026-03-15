@@ -15,7 +15,7 @@ async function testBullMQ() {
     queueName,
     async (job) => {
       console.log(
-        "✅ Worker received job:",
+        "Worker received job:",
         job.name,
         "- Data:",
         JSON.stringify(job.data),
@@ -27,7 +27,7 @@ async function testBullMQ() {
 
   worker.on("completed", async (job, result) => {
     console.log(
-      "✅ Job completed:",
+      "Job completed:",
       job.name,
       "- Result:",
       JSON.stringify(result),
@@ -36,18 +36,18 @@ async function testBullMQ() {
     await worker.close();
     await queue.close();
     await connection.quit();
-    console.log("\n🎉 BULLMQ IS WORKING PERFECTLY");
+    console.log("BULLMQ IS WORKING PERFECTLY");
   });
 
   worker.on("failed", (job, err) => {
-    console.error("❌ Job failed:", err.message);
+    console.error("Job failed:", err.message);
   });
 
   await queue.add("index_session", {
     sessionId: "ses_test123",
     userId: "usr_test123",
   });
-  console.log("✅ Job added to queue");
+  console.log("Job added to queue");
 }
 
 testBullMQ();
