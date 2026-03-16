@@ -1,33 +1,22 @@
 import "dotenv/config";
-import { InferenceClient } from "@huggingface/inference";
+import OpenAI from "openai";
 
-const client = new InferenceClient(process.env.HF_API_KEY);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function testEmbedding() {
   try {
-    const result = await client.featureExtraction({
-      model: "sentence-transformers/all-MiniLM-L6-v2",
-      inputs: "HTTP is how browsers communicate with servers",
+    const result = await openai.embeddings.create({
+      model: "text-embedding-3-small",
+      input: "HTTP is how browsers communicate with servers",
     });
 
-    // Check what we got back
-    console.log("Type:", typeof result);
-    console.log("Is array:", Array.isArray(result));
+    const vector = result.data[0].embedding;
+    console.log("Type:", typeof vector);
+    console.log("Is array:", Array.isArray(vector));
+    console.log("Dimensions:", vector.length);
+    console.log("First 5 values:", vector.slice(0, 5));
 
-    // It might be nested - let's see the shape
-    if (Array.isArray(result)) {
-      if (Array.isArray(result[0])) {
-        console.log("Shape: nested array");
-        console.log("Dimensions:", result[0].length);
-        console.log("First 5 values:", result[0].slice(0, 5));
-      } else {
-        console.log("Shape: flat array");
-        console.log("Dimensions:", result.length);
-        console.log("First 5 values:", result.slice(0, 5));
-      }
-    }
-
-    console.log("HUGGINGFACE EMBEDDING WORKING");
+    console.log("OPENAI EMBEDDING WORKING PERFECTLY");
   } catch (error) {
     console.error("Failed:", error.message);
   }

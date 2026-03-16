@@ -1,26 +1,25 @@
 import "dotenv/config";
-import { InferenceClient } from "@huggingface/inference";
+import OpenAI from "openai";
 import { Pinecone } from "@pinecone-database/pinecone";
 
-const client = new InferenceClient(process.env.HF_API_KEY);
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
 async function embed(text) {
-  const result = await client.featureExtraction({
-    model: "sentence-transformers/all-MiniLM-L6-v2",
-    inputs: text,
+  const result = await openai.embeddings.create({
+    model: "text-embedding-3-small",
+    input: text,
   });
-  return Array.from(result);
+  return result.data[0].embedding;
 }
 
 async function testRAGFlow() {
   try {
-    // Verify embedding shape first
     const testVec = await embed("test");
     console.log("✅ Embedding dimensions:", testVec.length);
 
     const index = pc.index(process.env.PINECONE_INDEX);
-    const namespace = index.namespace("__default__");
+    const namespace = index.namespace("test_user_rag");
 
     const chunks = [
       {
@@ -82,18 +81,15 @@ async function testRAGFlow() {
     }
 
     console.log("Vectors count:", vectors.length);
-    console.log("First vector id:", vectors[0].id);
     console.log("First vector values length:", vectors[0].values.length);
-    console.log("First vector values type:", typeof vectors[0].values[0]);
-    console.log("Has metadata:", !!vectors[0].metadata);
 
-    await index.upsert({ records: vectors });
-    console.log("Upserted", vectors.length, "vectors to Pinecone");
+    await namespace.upsert({ records: vectors });
+    console.log("✅ Upserted", vectors.length, "vectors to Pinecone");
 
     console.log("Waiting for indexing...");
     await new Promise((r) => setTimeout(r, 3000));
 
-    console.log("Simulating Chat Queries");
+    console.log("\n--- Simulating Chat Queries ---\n");
 
     const q1Vector = await embed("What gaps do I have in HTTP?");
     const results1 = await namespace.query({
@@ -151,11 +147,11 @@ async function testRAGFlow() {
     });
 
     await namespace.deleteAll();
-    console.log("Cleanup done");
+    console.log("\n✅ Cleanup done");
 
-    console.log("FULL RAG FLOW IS WORKING PERFECTLY");
+    console.log("\n🎉 FULL RAG FLOW IS WORKING PERFECTLY");
   } catch (error) {
-    console.error("RAG flow test failed:", error.message);
+    console.error("❌ RAG flow test failed:", error.message);
   }
 }
 
