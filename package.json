@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/Nithish-raina/voice-learn#readme",
   "dependencies": {
+    "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "swagger-ui-express": "^5.0.1",
     "yamljs": "^0.3.0"

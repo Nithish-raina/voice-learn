@@ -1,14 +1,24 @@
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import routes from "./src/routes/index.js";
+import { errorHandler } from "./src/middlewares/error-handler.js";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
 import path from "path";
-import cors from "cors";
+
 const app = express();
 
 const currentDir = path.dirname(new URL(import.meta.url).pathname);
 
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    credentials: true,
+  }),
+);
 app.use(express.json());
+app.use(cookieParser());
 
 if (process.env.NODE_ENV !== "production") {
   const swaggerDocument = YAML.load(
@@ -30,6 +40,12 @@ app.get("/api/v1/health", (req, res) => {
     data: { message: "VoiceLearn API is running" },
   });
 });
+
+// All routes
+app.use("/api/v1", routes);
+
+// Global error handler — must be after routes
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
