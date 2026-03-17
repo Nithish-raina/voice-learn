@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  googleId     String?  @unique @map("google_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  sessions          Session[]
+  flashcards        Flashcard[]
+  chatConversations ChatConversation[]
+
+  @@map("users")
+}
+
+model Session {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  topic           String
+  subject         String
+  difficulty      String
+  transcriptText  String?  @map("transcript_text")
+  audioUrl        String?  @map("audio_url")
+  durationSeconds Int?     @map("duration_seconds")
+  score           Int?
+  strengths       String?
+  gaps            String?
+  testYourselfQas Json?    @map("test_yourself_qas")
+  status          String   @default("recording")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user         User          @relation(fields: [userId], references: [id])
+  flashcards   Flashcard[]
+  ragIndexJob  RagIndexJob?
+
+  @@map("sessions")
+}
+
+model Flashcard {
+  id             String    @id @default(uuid())
+  sessionId      String    @map("session_id")
+  userId         String    @map("user_id")
+  question       String
+  answer         String
+  nextReviewAt   DateTime  @map("next_review_at")
+  intervalDays   Int       @default(1) @map("interval_days")
+  easeFactor     Float     @default(2.5) @map("ease_factor")
+  reviewCount    Int       @default(0) @map("review_count")
+  lastReviewedAt DateTime? @map("last_reviewed_at")
+  status         String    @default("active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@map("flashcards")
+}
+
+model RagIndexJob {
+  id            String    @id @default(uuid())
+  sessionId     String    @unique @map("session_id")
+  status        String    @default("queued")
+  chunksIndexed Int?      @map("chunks_indexed")
+  startedAt     DateTime? @map("started_at")
+  completedAt   DateTime? @map("completed_at")
+  errorMessage  String?   @map("error_message")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  session Session @relation(fields: [sessionId], references: [id])
+
+  @@map("rag_index_jobs")
+}
+
+model ChatConversation {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  title     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user     User          @relation(fields: [userId], references: [id])
+  messages ChatMessage[]
+
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String   @id @default(uuid())
+  conversationId String   @map("conversation_id")
+  role           String
+  content        String
+  sources        Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id])
+
+  @@map("chat_messages")
+}

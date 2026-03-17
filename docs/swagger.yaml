@@ -1,0 +1,1241 @@
+openapi: 3.0.3
+info:
+  title: VoiceLearn API
+  description: Voice-first learning with AI analysis, spaced repetition flashcards, and chat support with your knowledgebase of learnings.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3000/api/v1
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Authentication and account management
+  - name: Dashboard
+    description: Home screen and user info
+  - name: Sessions
+    description: Recording sessions and analysis results
+  - name: Flashcards
+    description: Spaced repetition flashcard review
+  - name: Chat
+    description: Knowledge chat with your learning data
+  - name: Insights
+    description: Learning analytics and stats
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                  message:
+                    type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          example: usr_abc123
+        name:
+          type: string
+          example: Alex Johnson
+        email:
+          type: string
+          example: alex@example.com
+        createdAt:
+          type: string
+          format: date-time
+
+    SessionSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          example: ses_abc123
+        topic:
+          type: string
+          example: How HTTP Works
+        subject:
+          type: string
+          example: Programming
+        score:
+          type: integer
+          example: 8
+        durationSeconds:
+          type: integer
+          example: 154
+        createdAt:
+          type: string
+          format: date-time
+
+    SessionDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          example: ses_abc123
+        topic:
+          type: string
+          example: How HTTP Works
+        subject:
+          type: string
+          example: Programming
+        difficulty:
+          type: string
+          enum: [beginner, intermediate, advanced]
+        transcriptText:
+          type: string
+        audioUrl:
+          type: string
+        durationSeconds:
+          type: integer
+        score:
+          type: integer
+        strengths:
+          type: string
+        gaps:
+          type: string
+        testYourselfQas:
+          type: array
+          items:
+            type: object
+            properties:
+              question:
+                type: string
+              answer:
+                type: string
+        flashcards:
+          type: array
+          items:
+            $ref: "#/components/schemas/Flashcard"
+        status:
+          type: string
+          enum: [recording, processing, completed, failed, abandoned]
+        createdAt:
+          type: string
+          format: date-time
+
+    Flashcard:
+      type: object
+      properties:
+        id:
+          type: string
+          example: fc_abc123
+        sessionId:
+          type: string
+          example: ses_abc123
+        question:
+          type: string
+        answer:
+          type: string
+        sourceTopic:
+          type: string
+          example: How HTTP Works
+        nextReviewAt:
+          type: string
+          format: date-time
+        intervalDays:
+          type: integer
+        easeFactor:
+          type: number
+          format: float
+        reviewCount:
+          type: integer
+        lastReviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          type: string
+          enum: [active, archived]
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatConversation:
+      type: object
+      properties:
+        id:
+          type: string
+          example: conv_abc123
+        title:
+          type: string
+          nullable: true
+        lastMessagePreview:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          example: msg_abc123
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        sources:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              sessionId:
+                type: string
+              topic:
+                type: string
+              date:
+                type: string
+                format: date
+        createdAt:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalItems:
+          type: integer
+        totalPages:
+          type: integer
+
+paths:
+  # ==================== AUTH ====================
+
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Create a new account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: Alex Johnson
+                email:
+                  type: string
+                  format: email
+                  example: alex@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: securepassword123
+      responses:
+        "201":
+          description: Account created
+          headers:
+            Set-Cookie:
+              description: httpOnly refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      accessToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        example: 900
+        "409":
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: EMAIL_EXISTS
+                  message: An account with this email already exists
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: VALIDATION_ERROR
+                  message: Invalid input
+                  details:
+                    - field: password
+                      message: Must be at least 8 characters
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: httpOnly refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      accessToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        example: 900
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: Email or password is incorrect
+
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Sign in or sign up with Google OAuth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  description: Google OAuth authorization code
+      responses:
+        "200":
+          description: Google auth successful
+          headers:
+            Set-Cookie:
+              description: httpOnly refresh token cookie
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: "#/components/schemas/User"
+                      accessToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                      isNewUser:
+                        type: boolean
+        "401":
+          description: Google auth failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: GOOGLE_AUTH_FAILED
+                  message: Failed to verify Google credentials
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: Reads refresh token from httpOnly cookie. No request body needed.
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      accessToken:
+                        type: string
+                      expiresIn:
+                        type: integer
+                        example: 900
+        "401":
+          description: Refresh token expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: REFRESH_TOKEN_EXPIRED
+                  message: Please log in again
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Log out and clear refresh token
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: Logged out
+
+  # ==================== DASHBOARD ====================
+
+  /users/me:
+    get:
+      tags: [Dashboard]
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /users/me/usage:
+    get:
+      tags: [Dashboard]
+      summary: Get recording rate limit usage for today
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Usage data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      dailyLimitSeconds:
+                        type: integer
+                        example: 1800
+                      dailyUsedSeconds:
+                        type: integer
+                        example: 720
+                      dailyRemainingSeconds:
+                        type: integer
+                        example: 1080
+                      perSessionLimitSeconds:
+                        type: integer
+                        example: 600
+                      canRecord:
+                        type: boolean
+                        example: true
+
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Get all data needed for the home screen
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      streak:
+                        type: object
+                        properties:
+                          current:
+                            type: integer
+                            example: 12
+                          longest:
+                            type: integer
+                            example: 18
+                      dueFlashcardsCount:
+                        type: integer
+                        example: 12
+                      recentSessions:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/SessionSummary"
+                      activityHeatmap:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                              format: date
+                            count:
+                              type: integer
+                      stats:
+                        type: object
+                        properties:
+                          totalTopics:
+                            type: integer
+                          avgScore:
+                            type: number
+                            format: float
+                          totalTimeSeconds:
+                            type: integer
+
+  # ==================== SESSIONS ====================
+
+  /sessions:
+    post:
+      tags: [Sessions]
+      summary: Create a new recording session
+      description: Checks rate limits, creates session, generates presigned S3 URL, returns WebSocket URL.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [topic, subject, difficulty]
+              properties:
+                topic:
+                  type: string
+                  example: How HTTP Works
+                subject:
+                  type: string
+                  example: Programming
+                difficulty:
+                  type: string
+                  enum: [beginner, intermediate, advanced]
+      responses:
+        "201":
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      sessionId:
+                        type: string
+                        example: ses_abc123
+                      presignedUrl:
+                        type: string
+                        description: S3 presigned URL for direct audio upload from frontend
+                      maxRecordingSeconds:
+                        type: integer
+                        example: 600
+                        description: Minimum of per-session limit and remaining daily budget
+                      websocketUrl:
+                        type: string
+                        example: wss://api.voicelearn.com/ws/session/ses_abc123
+        "429":
+          description: Daily recording limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: DAILY_LIMIT_REACHED
+                  message: You have used your daily recording limit. Resets at midnight.
+                  details:
+                    dailyUsedSeconds: 1800
+                    dailyLimitSeconds: 1800
+                    resetsAt: "2026-03-11T00:00:00Z"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      tags: [Sessions]
+      summary: List all sessions for the library screen
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: subject
+          in: query
+          schema:
+            type: string
+          description: Filter by subject
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by topic name
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [created_at_desc, score_desc, score_asc]
+            default: created_at_desc
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 12
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      sessions:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: "#/components/schemas/SessionSummary"
+                            - type: object
+                              properties:
+                                isMastered:
+                                  type: boolean
+                                attemptCount:
+                                  type: integer
+                      pagination:
+                        $ref: "#/components/schemas/Pagination"
+
+  /sessions/{sessionId}:
+    get:
+      tags: [Sessions]
+      summary: Get full session detail for results screen
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/SessionDetail"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: SESSION_NOT_FOUND
+                  message: Session not found
+        "403":
+          description: Not your session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: FORBIDDEN
+                  message: You do not have access to this session
+
+  # ==================== FLASHCARDS ====================
+
+  /flashcards:
+    get:
+      tags: [Flashcards]
+      summary: List flashcards with filters
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: due
+          in: query
+          schema:
+            type: boolean
+          description: Only return cards due for review (next_review_at <= now)
+        - name: sessionId
+          in: query
+          schema:
+            type: string
+          description: Only cards from a specific session
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, archived]
+            default: active
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of flashcards
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      flashcards:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Flashcard"
+                      pagination:
+                        $ref: "#/components/schemas/Pagination"
+
+  /flashcards/stats:
+    get:
+      tags: [Flashcards]
+      summary: Get flashcard statistics for the overview cards
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Flashcard stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      dueToday:
+                        type: integer
+                        example: 5
+                      upcoming:
+                        type: integer
+                        example: 8
+                      mastered:
+                        type: integer
+                        example: 23
+                        description: Cards with interval_days above 30
+                      total:
+                        type: integer
+                        example: 36
+
+  /flashcards/{flashcardId}/review:
+    patch:
+      tags: [Flashcards]
+      summary: Submit a review rating for a flashcard
+      description: Applies SM-2 algorithm to recalculate review schedule based on the rating.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: flashcardId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating:
+                  type: string
+                  enum: [forgot, hard, good, easy]
+      responses:
+        "200":
+          description: Review recorded and schedule updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      nextReviewAt:
+                        type: string
+                        format: date-time
+                      intervalDays:
+                        type: integer
+                      easeFactor:
+                        type: number
+                        format: float
+                      reviewCount:
+                        type: integer
+                      lastReviewedAt:
+                        type: string
+                        format: date-time
+        "400":
+          description: Invalid rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: INVALID_RATING
+                  message: "Rating must be one of: forgot, hard, good, easy"
+        "404":
+          description: Flashcard not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: FLASHCARD_NOT_FOUND
+                  message: Flashcard not found
+        "403":
+          description: Not your flashcard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: FORBIDDEN
+                  message: You do not have access to this flashcard
+
+  # ==================== CHAT ====================
+
+  /chat/conversations:
+    get:
+      tags: [Chat]
+      summary: List all chat conversations
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      conversations:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ChatConversation"
+                      pagination:
+                        $ref: "#/components/schemas/Pagination"
+
+    post:
+      tags: [Chat]
+      summary: Create a new chat conversation
+      security:
+        - BearerAuth: []
+      responses:
+        "201":
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: conv_def456
+                      title:
+                        type: string
+                        nullable: true
+                      createdAt:
+                        type: string
+                        format: date-time
+
+  /chat/conversations/{conversationId}/messages:
+    get:
+      tags: [Chat]
+      summary: Get messages for a conversation
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      messages:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/ChatMessage"
+                      pagination:
+                        $ref: "#/components/schemas/Pagination"
+        "404":
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: CONVERSATION_NOT_FOUND
+                  message: Conversation not found
+        "403":
+          description: Not your conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      tags: [Chat]
+      summary: Send a message and get AI response
+      description: Embeds the question, searches the user's vector namespace, passes relevant chunks to the LLM, and returns a grounded response with source citations.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  example: What gaps do I still have in networking?
+      responses:
+        "200":
+          description: Message sent and AI response generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      userMessage:
+                        $ref: "#/components/schemas/ChatMessage"
+                      assistantMessage:
+                        $ref: "#/components/schemas/ChatMessage"
+        "404":
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: CONVERSATION_NOT_FOUND
+                  message: Conversation not found
+        "400":
+          description: Empty message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                status: error
+                error:
+                  code: EMPTY_MESSAGE
+                  message: Message content cannot be empty
+        "403":
+          description: Not your conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # ==================== INSIGHTS ====================
+
+  /insights:
+    get:
+      tags: [Insights]
+      summary: Get learning analytics and stats
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Insights data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      streak:
+                        type: object
+                        properties:
+                          current:
+                            type: integer
+                            example: 12
+                          longest:
+                            type: integer
+                            example: 18
+                      activityHeatmap:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            date:
+                              type: string
+                              format: date
+                            count:
+                              type: integer
+                      scoreTrend:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            week:
+                              type: string
+                              format: date
+                            avgScore:
+                              type: number
+                              format: float
+                      strongestTopic:
+                        type: object
+                        properties:
+                          topic:
+                            type: string
+                            example: Photosynthesis
+                          avgScore:
+                            type: number
+                            example: 9.0
+                      weakestTopic:
+                        type: object
+                        properties:
+                          topic:
+                            type: string
+                            example: Binary Search Trees
+                          avgScore:
+                            type: number
+                            example: 5.0
+                      stats:
+                        type: object
+                        properties:
+                          totalRecordings:
+                            type: integer
+                          totalTopics:
+                            type: integer
+                          avgScore:
+                            type: number
+                            format: float
+                          totalTimeSeconds:
+                            type: integer
