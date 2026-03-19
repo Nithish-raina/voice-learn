@@ -1,5 +1,7 @@
 // auth service for handling business logic related to authentication
+import crypto from "crypto";
 import { userRepository } from "../repositories/user-repository.js";
+import { tokenRepository } from "../repositories/token-repository.js";
 import { hashPassword, comparePassword } from "../utils/password.js";
 import {
   generateAccessToken,
@@ -7,6 +9,8 @@ import {
   verifyRefreshToken,
 } from "../utils/jwt.js";
 import { AppError } from "../utils/errors.js";
+import { redis } from "../lib/redis-client.js";
+import { csrfKey, CSRF_TTL } from "../middlewares/csrf.js";
 
 import { OAuth2Client } from "google-auth-library";
 
@@ -36,6 +40,8 @@ export const authService = {
 
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
+
+    await tokenRepository.storeRefreshToken(user.id, refreshToken);
 
     return {
       user: {
@@ -77,6 +83,8 @@ export const authService = {
 
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
+
+    await tokenRepository.storeRefreshToken(user.id, refreshToken);
 
     return {
       user: {
@@ -143,6 +151,8 @@ export const authService = {
     const accessToken = generateAccessToken(user.id);
     const refreshToken = generateRefreshToken(user.id);
 
+    await tokenRepository.storeRefreshToken(user.id, refreshToken);
+
     return {
       user: {
         id: user.id,
@@ -155,8 +165,8 @@ export const authService = {
     };
   },
 
-  async refresh(refreshToken) {
-    if (!refreshToken) {
+  async refresh(oldRefreshToken) {
+    if (!oldRefreshToken) {
       throw new AppError(
         "Refresh token is required",
         401,
@@ -164,14 +174,46 @@ export const authService = {
       );
     }
 
-    const decoded = verifyRefreshToken(refreshToken);
+    const decoded = verifyRefreshToken(oldRefreshToken);
+
+    // Verify token exists in Redis (not revoked)
+    const isValid = await tokenRepository.verifyRefreshToken(
+      decoded.userId,
+      oldRefreshToken,
+    );
+    if (!isValid) {
+      throw new AppError("Refresh token has been revoked", 401, "TOKEN_REVOKED");
+    }
 
     const user = await userRepository.findById(decoded.userId);
     if (!user) {
       throw new AppError("User not found", 401, "INVALID_TOKEN");
     }
 
+    // Rotate: delete old token, issue new one
+    await tokenRepository.deleteRefreshToken(decoded.userId, oldRefreshToken);
+
     const accessToken = generateAccessToken(user.id);
-    return { accessToken };
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    await tokenRepository.storeRefreshToken(user.id, newRefreshToken);
+
+    return { accessToken, refreshToken: newRefreshToken };
+  },
+
+  async logout(userId, refreshToken) {
+    if (refreshToken) {
+      await tokenRepository.deleteRefreshToken(userId, refreshToken);
+    }
+  },
+
+  async logoutAll(userId) {
+    await tokenRepository.deleteAllRefreshTokens(userId);
+  },
+
+  async generateCsrfToken() {
+    const token = crypto.randomBytes(32).toString("hex");
+    await redis.set(csrfKey(token), "1", "EX", CSRF_TTL);
+    return token;
   },
 };
