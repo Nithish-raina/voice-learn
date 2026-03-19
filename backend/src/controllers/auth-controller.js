@@ -1,14 +1,6 @@
 // /api/v1/auth routes
 import { authService } from "../services/auth-service.js";
-import { CSRF_TTL } from "../middlewares/csrf.js";
-
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "strict",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-  path: "/",
-};
+import { COOKIE_OPTIONS, CSRF_TTL } from "../utils/constants.js";
 
 export const authController = {
   async signup(req, res, next) {

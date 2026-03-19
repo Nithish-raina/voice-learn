@@ -1,14 +1,11 @@
 // CSRF protection middleware — verifies token from httpOnly cookie exists in Redis
 import { redis } from "../lib/redis-client.js";
 import { AppError } from "../utils/errors.js";
-
-const CSRF_TTL = 24 * 60 * 60; // 1 day in seconds
+import { CSRF_TTL } from "../utils/constants.js";
 
 export function csrfKey(token) {
   return `csrf:${token}`;
 }
-
-export { CSRF_TTL };
 
 export async function csrf(req, res, next) {
   try {

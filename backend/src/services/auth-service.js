@@ -10,7 +10,8 @@ import {
 } from "../utils/jwt.js";
 import { AppError } from "../utils/errors.js";
 import { redis } from "../lib/redis-client.js";
-import { csrfKey, CSRF_TTL } from "../middlewares/csrf.js";
+import { csrfKey } from "../middlewares/csrf.js";
+import { CSRF_TTL } from "../utils/constants.js";
 
 import { OAuth2Client } from "google-auth-library";
 
