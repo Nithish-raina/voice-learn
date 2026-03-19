@@ -5,7 +5,7 @@ export const s3 = new S3Client({
   region: process.env.AWS_REGION,
   credentials: {
     accessKeyId: process.env.AWS_ACCESS_KEY,
-    secretAccessKey: process.env.AWS_SECRET_KEY,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS,
   },
 });
 
@@ -16,7 +16,7 @@ export async function generatePresignedUploadUrl(userId, sessionId) {
     const url = await getSignedUrl(
       s3,
       new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET,
+        Bucket: process.env.AWS_BUCKET_NAME,
         Key: key,
         ContentType: "audio/webm",
       }),

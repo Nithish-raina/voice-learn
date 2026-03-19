@@ -35,7 +35,7 @@ export const sessionService = {
 
     // Save the S3 key so we know where the audio will be
     await sessionRepository.update(session.id, {
-      audioUrl: `https://${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${audioKey}`,
+      audioUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${audioKey}`,
     });
 
     return {

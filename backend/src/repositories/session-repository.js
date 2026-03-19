@@ -22,7 +22,7 @@ export const sessionRepository = {
     const where = { userId };
 
     if (subject) {
-      where.subject = subject;
+      where.subject = { equals: subject, mode: "insensitive" };
     }
 
     if (search) {
