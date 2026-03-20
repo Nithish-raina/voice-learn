@@ -1,0 +1,136 @@
+import { extractConcepts } from "./concept-extractor.js";
+import { checkFacts } from "./fact-checker.js";
+import { checkCompleteness } from "./completeness-checker.js";
+import { generateScore } from "./scorer.js";
+import { generateContent } from "./content-generator.js";
+import { sessionRepository } from "../../repositories/session-repository.js";
+import { flashcardRepository } from "../../repositories/flashcard-repository.js";
+import { ragQueue } from "../../lib/queue-client.js";
+import { prisma } from "../../lib/prisma-client.js";
+import { SESSION_STATUS } from "../../utils/constants.js";
+
+export async function runPipeline({
+  transcript,
+  topic,
+  subject,
+  difficulty,
+  sessionId,
+  userId,
+  onPartialResults,
+}) {
+  console.log(`Pipeline started: session=${sessionId}`);
+  const startTime = Date.now();
+
+  // Agent 1 — Concept Extraction (must run first)
+  console.log("Running Agent 1: Concept Extractor");
+  const concepts = await extractConcepts({
+    transcript,
+    topic,
+    subject,
+    difficulty,
+  });
+  console.log(
+    `Agent 1 done: ${concepts.concepts?.length || 0} concepts extracted`,
+  );
+
+  // Agent 2A + 2B — Fact Check and Completeness Check (parallel)
+  console.log("Running Agent 2A + 2B in parallel");
+  const [factCheck, completeness] = await Promise.all([
+    checkFacts({ concepts, topic, difficulty }),
+    checkCompleteness({ concepts, topic, difficulty }),
+  ]);
+  console.log("Agent 2A + 2B done");
+
+  // Agent 3A + 3B — Scorer and Content Generator (parallel)
+  console.log("Running Agent 3A + 3B in parallel");
+  const agentInputs = { concepts, factCheck, completeness, topic, difficulty };
+
+  const [scoreResult, contentResult] = await Promise.all([
+    generateScore(agentInputs).then((result) => {
+      // Send partial results as soon as score is ready
+      if (onPartialResults) {
+        onPartialResults({
+          score: result.score,
+          strengths: result.strengths,
+          gaps: result.gaps,
+        });
+      }
+      return result;
+    }),
+    generateContent(agentInputs),
+  ]);
+  console.log("Agent 3A + 3B done");
+
+  const elapsed = Date.now() - startTime;
+  console.log(`Pipeline completed in ${elapsed}ms`);
+
+  // Save everything to database in a transaction
+  const savedData = await prisma.$transaction(async (tx) => {
+    // Update session with results
+    const updatedSession = await tx.session.update({
+      where: { id: sessionId },
+      data: {
+        score: scoreResult.score,
+        strengths: scoreResult.strengths,
+        gaps: scoreResult.gaps,
+        testYourselfQas: contentResult.testYourselfQas,
+        status: SESSION_STATUS.COMPLETED,
+      },
+    });
+
+    // Create flashcards
+    const flashcardsData = contentResult.flashcards.map((f) => ({
+      sessionId,
+      userId,
+      question: f.question,
+      answer: f.answer,
+      nextReviewAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // tomorrow
+      intervalDays: 1,
+      easeFactor: 2.5,
+      reviewCount: 0,
+      status: "active",
+    }));
+
+    if (flashcardsData.length > 0) {
+      await tx.flashcard.createMany({ data: flashcardsData });
+    }
+
+    // Create RAG index job
+    await tx.ragIndexJob.create({
+      data: {
+        sessionId,
+        status: "queued",
+      },
+    });
+
+    // Fetch created flashcards to return
+    const flashcards = await tx.flashcard.findMany({
+      where: { sessionId },
+      select: {
+        id: true,
+        question: true,
+        answer: true,
+        nextReviewAt: true,
+      },
+    });
+
+    return { updatedSession, flashcards };
+  });
+
+  // Push RAG indexing job to queue
+  try {
+    await ragQueue.add("index_session", { sessionId });
+    console.log(`RAG indexing job queued for session: ${sessionId}`);
+  } catch (error) {
+    console.error("Failed to queue RAG job:", error.message);
+    // Don't fail the pipeline if queue push fails
+  }
+
+  return {
+    score: scoreResult.score,
+    strengths: scoreResult.strengths,
+    gaps: scoreResult.gaps,
+    testYourselfQas: contentResult.testYourselfQas,
+    flashcards: savedData.flashcards,
+  };
+}

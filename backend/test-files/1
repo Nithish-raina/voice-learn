@@ -1,0 +1,7 @@
+❌ Pipeline failed: Error: Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted
+    at Anthropic.validateHeaders (file:///home/nithishraina/Development/voice-learn/node_modules/@anthropic-ai/sdk/client.mjs:115:15)
+    at Anthropic.buildHeaders (file:///home/nithishraina/Development/voice-learn/node_modules/@anthropic-ai/sdk/client.mjs:472:14)
+    at async Anthropic.buildRequest (file:///home/nithishraina/Development/voice-learn/node_modules/@anthropic-ai/sdk/client.mjs:434:28)
+    at async Anthropic.makeRequest (file:///home/nithishraina/Development/voice-learn/node_modules/@anthropic-ai/sdk/client.mjs:212:39)
+    at async callLLM (file:///home/nithishraina/Development/voice-learn/backend/src/lib/llm-client.js:13:20)
+    at async testPipeline (file:///home/nithishraina/Development/voice-learn/backend/test-files/test-pipeline.js:18:22)

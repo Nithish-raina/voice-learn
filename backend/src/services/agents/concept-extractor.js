@@ -1,0 +1,32 @@
+import { callFastLLM } from "../../lib/llm-client.js";
+
+export async function extractConcepts({
+  transcript,
+  topic,
+  subject,
+  difficulty,
+}) {
+  const system = `You are a concept extractor. Analyze a student's spoken explanation and extract the main concepts they covered. Return ONLY valid JSON with no markdown formatting.`;
+
+  const prompt = `The student was explaining "${topic}" (subject: ${subject}, difficulty: ${difficulty}).
+
+Here is their transcript:
+"${transcript}"
+
+Extract the main concepts they covered. For each concept, include what they actually said about it and any analogies they used.
+
+Return this exact JSON structure:
+{
+  "concepts": [
+    {
+      "concept": "name of the concept",
+      "explanation": "what the student said about this concept",
+      "analogy": "any analogy used, or null"
+    }
+  ],
+  "keyTerms": ["list", "of", "key", "terms", "mentioned"],
+  "clarityNotes": "brief note on overall clarity and structure of the explanation"
+}`;
+
+  return callFastLLM({ system, prompt });
+}

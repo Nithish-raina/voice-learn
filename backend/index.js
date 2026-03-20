@@ -1,11 +1,13 @@
+import { createServer } from "http";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import routes from "./src/routes/index.js";
-import { errorHandler } from "./src/middlewares/error-handler.js";
 import express from "express";
 import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
 import path from "path";
+import { errorHandler } from "./src/middlewares/error-handler.js";
+import { setupWebSocket } from "./src/websocket/index.js";
 
 const app = express();
 
@@ -47,7 +49,12 @@ app.use("/api/v1", routes);
 // Global error handler — must be after routes
 app.use(errorHandler);
 
+// Create HTTP server and attach WebSocket
+const server = createServer(app);
+setupWebSocket(server);
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`WebSocket available at ws://localhost:${PORT}/ws`);
 });

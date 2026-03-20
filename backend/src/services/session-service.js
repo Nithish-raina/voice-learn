@@ -41,7 +41,7 @@ export const sessionService = {
     return {
       sessionId: session.id,
       presignedUrl,
-      websocketUrl: `wss://${process.env.WS_HOST || "localhost:3000"}/ws/session/${session.id}`,
+      websocketUrl: `${process.env.WS_PROTOCOL || "ws"}://${process.env.WS_HOST || "localhost:3000"}/ws?sessionId=${session.id}`,
     };
   },
 
