@@ -77,14 +77,12 @@ async function testPipeline() {
     const totalTime = Date.now() - startA1;
     console.log(`\nTotal pipeline time: ${totalTime}ms`);
     console.log(
-      totalTime < 3000
-        ? "✅ Under 3 second target!"
-        : "⚠️ Over 3 second target",
+      totalTime < 3000 ? "Under 3 second target!" : "Over 3 second target",
     );
 
-    console.log("\n🎉 AGENT PIPELINE IS WORKING PERFECTLY");
+    console.log("\nAGENT PIPELINE IS WORKING PERFECTLY");
   } catch (error) {
-    console.error("❌ Pipeline failed:", error);
+    console.error("Pipeline failed:", error);
   }
 }
 

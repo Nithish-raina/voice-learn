@@ -15,7 +15,7 @@ const ws = new WebSocket(
 );
 
 ws.on("open", () => {
-  console.log("✅ WebSocket connected");
+  console.log("WebSocket connected");
 });
 
 ws.on("message", (data) => {
@@ -54,20 +54,20 @@ ws.on("message", (data) => {
     console.log("\n=== COMPLETE RESULTS ===");
     console.log("Q&As:", msg.data.testYourselfQas?.length);
     msg.data.testYourselfQas?.forEach((qa, i) => {
-      console.log(`  Q${i + 1}: ${qa.question}`);
+      console.log(`Q${i + 1}: ${qa.question}`);
     });
     console.log("Flashcards:", msg.data.flashcards?.length);
     msg.data.flashcards?.forEach((f, i) => {
-      console.log(`  Card ${i + 1}: ${f.question}`);
+      console.log(`Card ${i + 1}: ${f.question}`);
     });
   }
 
   if (msg.type === "error") {
-    console.log("❌ Error:", msg.error.code, msg.error.message);
+    console.log("Error:", msg.error.code, msg.error.message);
   }
 
   if (msg.type === "status" && msg.stage === "complete") {
-    console.log("\n🎉 FULL PIPELINE COMPLETED");
+    console.log("\nFULL PIPELINE COMPLETED");
     ws.close();
   }
 });
@@ -78,5 +78,5 @@ ws.on("close", (code, reason) => {
 });
 
 ws.on("error", (err) => {
-  console.error("❌ Error:", err.message);
+  console.error("Error:", err.message);
 });

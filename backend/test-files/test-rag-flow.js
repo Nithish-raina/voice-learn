@@ -16,7 +16,7 @@ async function embed(text) {
 async function testRAGFlow() {
   try {
     const testVec = await embed("test");
-    console.log("✅ Embedding dimensions:", testVec.length);
+    console.log("Embedding dimensions:", testVec.length);
 
     const index = pc.index(process.env.PINECONE_INDEX);
     const namespace = index.namespace("test_user_rag");
@@ -84,7 +84,7 @@ async function testRAGFlow() {
     console.log("First vector values length:", vectors[0].values.length);
 
     await namespace.upsert({ records: vectors });
-    console.log("✅ Upserted", vectors.length, "vectors to Pinecone");
+    console.log("Upserted", vectors.length, "vectors to Pinecone");
 
     console.log("Waiting for indexing...");
     await new Promise((r) => setTimeout(r, 3000));
@@ -147,11 +147,11 @@ async function testRAGFlow() {
     });
 
     await namespace.deleteAll();
-    console.log("\n✅ Cleanup done");
+    console.log("\nCleanup done");
 
-    console.log("\n🎉 FULL RAG FLOW IS WORKING PERFECTLY");
+    console.log("\nFULL RAG FLOW IS WORKING PERFECTLY");
   } catch (error) {
-    console.error("❌ RAG flow test failed:", error.message);
+    console.error("RAG flow test failed:", error.message);
   }
 }
 
