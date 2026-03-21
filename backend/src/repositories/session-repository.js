@@ -113,6 +113,21 @@ export const sessionRepository = {
     });
   },
 
+  async getCompletedSessions(userId) {
+    return prisma.session.findMany({
+      where: { userId, status: "completed" },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        topic: true,
+        subject: true,
+        score: true,
+        durationSeconds: true,
+        createdAt: true,
+      },
+    });
+  },
+
   async getCompletedSessionDates(userId) {
     return prisma.session.findMany({
       where: { userId, status: "completed" },

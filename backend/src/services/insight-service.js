@@ -1,5 +1,5 @@
-import { prisma } from "../lib/prisma-client.js";
 import { sessionRepository } from "../repositories/session-repository.js";
+import { AppError } from "../utils/errors.js";
 
 function calculateStreak(dates) {
   if (dates.length === 0) return { current: 0, longest: 0 };
@@ -63,12 +63,16 @@ function buildHeatmap(sessions, days) {
 
 export const insightService = {
   async getInsights(userId) {
-    // Fetch all completed sessions
-    const allSessions = await prisma.session.findMany({
-      where: { userId, status: "completed" },
-      orderBy: { createdAt: "desc" },
-      select: { id: true, topic: true, subject: true, score: true, durationSeconds: true, createdAt: true },
-    });
+    let allSessions;
+    try {
+      allSessions = await sessionRepository.getCompletedSessions(userId);
+    } catch (error) {
+      throw new AppError(
+        "Failed to fetch session data for insights",
+        500,
+        "INSIGHT_FETCH_FAILED",
+      );
+    }
 
     // 1. Streaks & Heatmap
     const streak = calculateStreak(allSessions.map((s) => s.createdAt));
