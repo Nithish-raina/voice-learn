@@ -160,7 +160,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
     // Run agent pipeline
     try {
       const { runPipeline } =
-        await import("../services/agents/agentPipeline.js");
+        await import("../services/agents/agent-pipeline.js");
 
       const result = await runPipeline({
         transcript,
