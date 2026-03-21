@@ -113,6 +113,14 @@ export const sessionRepository = {
     });
   },
 
+  async getCompletedSessionDates(userId) {
+    return prisma.session.findMany({
+      where: { userId, status: "completed" },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+  },
+
   async getDistinctTopicCount(userId) {
     const result = await prisma.session.findMany({
       where: { userId, status: "completed" },

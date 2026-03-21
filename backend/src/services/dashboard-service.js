@@ -87,37 +87,60 @@ function buildHeatmap(sessions, days) {
 export const dashboardService = {
   async getDashboard(userId) {
     const [
-      recentSessions,
-      allCompletedSessions,
-      dueFlashcardsCount,
-      aggregateStats,
-      topicCount,
-    ] = await Promise.all([
+      recentSessionsResult,
+      sessionDatesResult,
+      dueFlashcardsCountResult,
+      aggregateStatsResult,
+      topicCountResult,
+    ] = await Promise.allSettled([
       sessionRepository.getRecentByUserId(userId, 5),
-      sessionRepository.findByUserId(userId, {
-        sort: "created_at_desc",
-        page: 1,
-        limit: 1000,
-      }),
+      sessionRepository.getCompletedSessionDates(userId),
       flashcardRepository.countDue(userId),
       sessionRepository.aggregate({ userId, status: "completed" }),
       sessionRepository.getDistinctTopicCount(userId),
     ]);
 
-    const sessionDates = allCompletedSessions.sessions.map((s) => s.createdAt);
-    const streak = calculateStreak(sessionDates);
-    const heatmap = buildHeatmap(allCompletedSessions.sessions, 30);
+    // Build streak and heatmap from session dates if available
+    let streak = null;
+    let heatmap = null;
+    if (sessionDatesResult.status === "fulfilled") {
+      const dates = sessionDatesResult.value.map((s) => s.createdAt);
+      streak = calculateStreak(dates);
+      heatmap = buildHeatmap(sessionDatesResult.value, 30);
+    }
 
-    return {
-      streak,
-      dueFlashcardsCount,
-      recentSessions,
-      activityHeatmap: heatmap,
-      stats: {
-        totalTopics: topicCount,
+    // Build stats from aggregate and topic count if available
+    let stats = null;
+    if (
+      aggregateStatsResult.status === "fulfilled" &&
+      topicCountResult.status === "fulfilled"
+    ) {
+      const aggregateStats = aggregateStatsResult.value;
+      stats = {
+        totalTopics: topicCountResult.value,
         avgScore: Math.round((aggregateStats._avg.score || 0) * 10) / 10,
         totalTimeSeconds: aggregateStats._sum.durationSeconds || 0,
-      },
+      };
+    }
+
+    return {
+      streak:
+        streak ??
+        { error: sessionDatesResult.reason?.message || "Failed to load streak" },
+      dueFlashcardsCount:
+        dueFlashcardsCountResult.status === "fulfilled"
+          ? dueFlashcardsCountResult.value
+          : { error: dueFlashcardsCountResult.reason?.message || "Failed to load due flashcards" },
+      recentSessions:
+        recentSessionsResult.status === "fulfilled"
+          ? recentSessionsResult.value
+          : { error: recentSessionsResult.reason?.message || "Failed to load recent sessions" },
+      activityHeatmap:
+        heatmap ??
+        { error: sessionDatesResult.reason?.message || "Failed to load activity heatmap" },
+      stats:
+        stats ??
+        { error: "Failed to load stats" },
     };
   },
 };
