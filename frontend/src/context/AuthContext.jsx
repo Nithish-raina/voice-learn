@@ -12,14 +12,11 @@ export function AuthProvider({ children }) {
       try {
         await api.get("/auth/csrf-token");
 
-        // Restore session — refresh token cookie is sent automatically
-        const { data } = await api.post("/auth/refresh");
-        setAccessToken(data.data.accessToken);
-
+        // If accessToken cookie exists, fetch user
+        // If expired, the 401 interceptor will refresh and retry
         const me = await api.get("/users/me");
         setUser(me.data.data);
       } catch {
-        // No valid refresh token — user stays logged out
         setAccessToken(null);
         setUser(null);
       } finally {
