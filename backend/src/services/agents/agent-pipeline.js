@@ -17,6 +17,7 @@ export async function runPipeline({
   sessionId,
   userId,
   onPartialResults,
+  onStageComplete,
 }) {
   console.log(`Pipeline started: session=${sessionId}`);
   const startTime = Date.now();
@@ -32,6 +33,13 @@ export async function runPipeline({
   console.log(
     `Agent 1 done: ${concepts.concepts?.length || 0} concepts extracted`,
   );
+
+  if (onStageComplete) {
+    onStageComplete({
+      stage: "concepts",
+      data: { concepts: concepts.concepts, keyTerms: concepts.keyTerms },
+    });
+  }
 
   // Agent 2A + 2B — Fact Check and Completeness Check (parallel)
   console.log("Running Agent 2A + 2B in parallel");

@@ -3,11 +3,15 @@ import { createDeepgramStream } from "../services/stt-service.js";
 import { rateLimitService } from "../services/ratelimit-service.js";
 import { sessionRepository } from "../repositories/session-repository.js";
 import { SESSION_STATUS } from "../utils/constants.js";
+import { s3 } from "../lib/s3-client.js";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 export function sessionHandler(ws, { sessionId, userId, session }) {
   let deepgram = null;
   let recordingStartTime = Date.now();
   let isStopped = false;
+  let audioSampleRate = 16000;
+  const audioChunks = [];
 
   // Send status to client
   function sendStatus(stage) {
@@ -58,6 +62,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
 
     // Binary data = audio chunk
     if (isBinary) {
+      audioChunks.push(Buffer.from(data));
       if (deepgram && deepgram.isConnected()) {
         deepgram.sendAudio(data);
       }
@@ -68,7 +73,10 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
     try {
       const message = JSON.parse(data.toString());
 
-      if (message.type === "stop") {
+      if (message.type === "audio_config") {
+        audioSampleRate = message.sampleRate || 16000;
+        console.log(`Audio sample rate: ${audioSampleRate}Hz`);
+      } else if (message.type === "stop") {
         isStopped = true;
         await handleStop();
       }
@@ -148,6 +156,32 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       return;
     }
 
+    // Upload audio to S3
+    try {
+      const pcmBuffer = Buffer.concat(audioChunks);
+      const wavBuffer = createWavBuffer(pcmBuffer, audioSampleRate, 1, 16);
+      const audioKey = `audio/${userId}/${sessionId}.wav`;
+
+      const bucket = "voice-learn";
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: audioKey,
+          Body: wavBuffer,
+          ContentType: "audio/wav",
+          ACL: "public-read",
+        }),
+      );
+
+      await sessionRepository.update(sessionId, {
+        audioUrl: `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${audioKey}`,
+      });
+      console.log(`Audio uploaded: ${audioKey}`);
+    } catch (error) {
+      console.error("Audio upload failed:", error.message);
+      // Don't fail the session — transcript and pipeline still work
+    }
+
     // Update session with transcript and duration
     await sessionRepository.update(sessionId, {
       transcriptText: transcript,
@@ -155,7 +189,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       status: SESSION_STATUS.PROCESSING,
     });
 
-    sendStatus("analyzing");
+    sendStatus("extracting_concepts");
 
     // Run agent pipeline
     try {
@@ -169,8 +203,13 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
         difficulty: session.difficulty,
         sessionId,
         userId,
+        onStageComplete({ stage, data }) {
+          sendResults("results_stage", { stage, ...data });
+          if (stage === "concepts") {
+            sendStatus("evaluating");
+          }
+        },
         onPartialResults(partialData) {
-          // Send score, strengths, gaps as soon as they're ready
           sendResults("results_partial", partialData);
         },
       });
@@ -193,4 +232,26 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       );
     }
   }
+}
+
+function createWavBuffer(pcmData, sampleRate, channels, bitsPerSample) {
+  const byteRate = (sampleRate * channels * bitsPerSample) / 8;
+  const blockAlign = (channels * bitsPerSample) / 8;
+  const header = Buffer.alloc(44);
+
+  header.write("RIFF", 0);
+  header.writeUInt32LE(36 + pcmData.length, 4);
+  header.write("WAVE", 8);
+  header.write("fmt ", 12);
+  header.writeUInt32LE(16, 16); // subchunk1 size
+  header.writeUInt16LE(1, 20); // PCM format
+  header.writeUInt16LE(channels, 22);
+  header.writeUInt32LE(sampleRate, 24);
+  header.writeUInt32LE(byteRate, 28);
+  header.writeUInt16LE(blockAlign, 32);
+  header.writeUInt16LE(bitsPerSample, 34);
+  header.write("data", 36);
+  header.writeUInt32LE(pcmData.length, 40);
+
+  return Buffer.concat([header, pcmData]);
 }

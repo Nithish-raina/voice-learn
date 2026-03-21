@@ -36,7 +36,6 @@ export const sessionController = {
         status: "success",
         data: {
           sessionId: result.sessionId,
-          presignedUrl: result.presignedUrl,
           maxRecordingSeconds,
           websocketUrl: result.websocketUrl,
         },

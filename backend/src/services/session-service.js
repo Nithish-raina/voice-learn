@@ -1,6 +1,5 @@
 // session service for handling business logic related to sessions
 import { sessionRepository } from "../repositories/session-repository.js";
-import { generatePresignedUploadUrl } from "../lib/s3-client.js";
 import { AppError } from "../utils/errors.js";
 import { SESSION_STATUS } from "../utils/constants.js";
 
@@ -14,33 +13,8 @@ export const sessionService = {
       status: SESSION_STATUS.RECORDING,
     });
 
-    let presignedUrl;
-    let audioKey;
-
-    try {
-      ({ url: presignedUrl, key: audioKey } = await generatePresignedUploadUrl(
-        userId,
-        session.id,
-      ));
-    } catch (error) {
-      await sessionRepository.update(session.id, {
-        status: SESSION_STATUS.FAILED,
-      });
-      throw new AppError(
-        "Failed to prepare upload. Please try again.",
-        502,
-        "UPLOAD_SETUP_FAILED",
-      );
-    }
-
-    // Save the S3 key so we know where the audio will be
-    await sessionRepository.update(session.id, {
-      audioUrl: `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${audioKey}`,
-    });
-
     return {
       sessionId: session.id,
-      presignedUrl,
       websocketUrl: `${process.env.WS_PROTOCOL || "ws"}://${process.env.WS_HOST || "localhost:3000"}/ws?sessionId=${session.id}`,
     };
   },
