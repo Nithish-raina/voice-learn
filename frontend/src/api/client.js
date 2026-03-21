@@ -2,7 +2,7 @@ import axios from "axios";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
 
-function getAccessToken() {
+export function getAccessToken() {
   const match = document.cookie.match(/(?:^|; )accessToken=([^;]*)/);
   return match ? match[1] : null;
 }
