@@ -4,7 +4,7 @@ import WebSocket from "ws";
 const DEEPGRAM_URL = "wss://api.deepgram.com/v1/listen";
 
 export function createDeepgramStream(options = {}) {
-  const { onTranscript, onError, onClose } = options;
+  const { onTranscript, onError, onClose, sampleRate = 16000 } = options;
 
   const params = new URLSearchParams({
     model: "nova-2",
@@ -12,7 +12,7 @@ export function createDeepgramStream(options = {}) {
     interim_results: "false",
     punctuate: "true",
     encoding: "linear16",
-    sample_rate: "16000",
+    sample_rate: String(sampleRate),
     channels: "1",
   });
 
@@ -58,9 +58,12 @@ export function createDeepgramStream(options = {}) {
     if (onError) onError(error);
   });
 
+  let closeResolve = null;
+
   dgWs.on("close", (code, reason) => {
     isOpen = false;
     console.log("Deepgram stream closed:", code, reason.toString());
+    if (closeResolve) closeResolve();
     if (onClose) onClose();
   });
 
@@ -73,9 +76,22 @@ export function createDeepgramStream(options = {}) {
 
     close() {
       if (isOpen && dgWs.readyState === WebSocket.OPEN) {
-        // Send close message to Deepgram to flush remaining audio
         dgWs.send(JSON.stringify({ type: "CloseStream" }));
       }
+    },
+
+    /** Sends CloseStream and waits for Deepgram to actually close (flush final transcript) */
+    closeAndWait(timeoutMs = 5000) {
+      return new Promise((resolve) => {
+        if (!isOpen || dgWs.readyState !== WebSocket.OPEN) {
+          resolve();
+          return;
+        }
+        closeResolve = resolve;
+        dgWs.send(JSON.stringify({ type: "CloseStream" }));
+        // Safety timeout in case Deepgram never closes
+        setTimeout(resolve, timeoutMs);
+      });
     },
 
     getTranscript() {

@@ -5,6 +5,7 @@ import { useRecording } from "../hooks/useRecording";
 import RecordingSetup from "../components/RecordingSetup";
 import RecordingActive from "../components/RecordingActive";
 import RecordingProcessing from "../components/RecordingProcessing";
+import StreamingResults from "../components/StreamingResults";
 
 export default function NewRecording() {
   const navigate = useNavigate();
@@ -13,9 +14,17 @@ export default function NewRecording() {
   const [subject, setSubject] = useState("Programming");
   const [difficulty, setDifficulty] = useState("intermediate");
   const [sessionId, setSessionId] = useState(null);
-  const [presignedUrl, setPresignedUrl] = useState(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [results, setResults] = useState({
+    concepts: null,
+    keyTerms: null,
+    score: null,
+    strengths: null,
+    gaps: null,
+    testYourselfQas: null,
+    flashcards: null,
+  });
 
   const { mutate: createSession, loading: creating } = useCreateSession();
 
@@ -26,15 +35,23 @@ export default function NewRecording() {
       if (stage === "ready") return;
       if (stage !== "complete") setPhase("processing");
     },
+    onStageComplete(data) {
+      setResults((prev) => ({ ...prev, ...data }));
+      setPhase("results");
+    },
     onPartialResults(data) {
-      // Store partial results and navigate to results page
-      sessionStorage.setItem("partialResults", JSON.stringify(data));
+      setResults((prev) => ({ ...prev, ...data }));
+      setPhase("results");
     },
     onResults(data) {
-      const partial = sessionStorage.getItem("partialResults");
-      const combined = { ...JSON.parse(partial || "{}"), ...data };
-      sessionStorage.setItem("fullResults", JSON.stringify(combined));
-      navigate(`/sessions/${sessionId}`);
+      setResults((prev) => {
+        const final = { ...prev, ...data };
+        navigate(`/sessions/${sessionId}`, {
+          replace: true,
+          state: { streamedResults: final },
+        });
+        return final;
+      });
     },
     onError(err) {
       setError(err.message);
@@ -52,7 +69,6 @@ export default function NewRecording() {
     try {
       const data = await createSession({ topic, subject, difficulty });
       setSessionId(data.sessionId);
-      setPresignedUrl(data.presignedUrl);
 
       // Small delay to ensure state is set before useRecording reads sessionId
       setTimeout(async () => {
@@ -66,17 +82,7 @@ export default function NewRecording() {
   }
 
   async function handleStop() {
-    const blob = stop();
-
-    // Upload audio to S3 in background
-    if (presignedUrl && blob.size > 0) {
-      fetch(presignedUrl, {
-        method: "PUT",
-        body: blob,
-        headers: { "Content-Type": "audio/webm" },
-      }).catch(console.error);
-    }
-
+    stop();
     setPhase("processing");
   }
 
@@ -104,5 +110,14 @@ export default function NewRecording() {
     );
   if (phase === "recording")
     return <RecordingActive topic={topic} onStop={handleStop} />;
+  if (phase === "results")
+    return (
+      <StreamingResults
+        results={results}
+        topic={topic}
+        subject={subject}
+        difficulty={difficulty}
+      />
+    );
   return <RecordingProcessing status={status} />;
 }

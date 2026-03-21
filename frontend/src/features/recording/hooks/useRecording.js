@@ -5,14 +5,13 @@ export function useRecording({
   sessionId,
   onResults,
   onPartialResults,
+  onStageComplete,
   onError,
   onStatus,
 }) {
   const [isRecording, setIsRecording] = useState(false);
   const wsRef = useRef(null);
-  const mediaRef = useRef(null);
   const streamRef = useRef(null);
-  const chunksRef = useRef([]);
   const processorRef = useRef(null);
 
   async function start() {
@@ -29,16 +28,7 @@ export function useRecording({
     });
     streamRef.current = stream;
 
-    // MediaRecorder for S3 upload blob
-    const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-    mediaRef.current = mediaRecorder;
-    chunksRef.current = [];
-    mediaRecorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
-    };
-    mediaRecorder.start(250);
-
-    // AudioContext for raw PCM to send to Deepgram via WebSocket
+    // AudioContext for raw PCM to send via WebSocket
     const audioContext = new AudioContext({ sampleRate: 16000 });
     const source = audioContext.createMediaStreamSource(stream);
     const processor = audioContext.createScriptProcessor(4096, 1, 1);
@@ -49,6 +39,12 @@ export function useRecording({
 
     ws.onopen = () => {
       setIsRecording(true);
+      ws.send(
+        JSON.stringify({
+          type: "audio_config",
+          sampleRate: audioContext.sampleRate,
+        }),
+      );
       source.connect(processor);
       processor.connect(audioContext.destination);
 
@@ -72,6 +68,7 @@ export function useRecording({
       if (msg.type === "status") onStatus?.(msg.stage);
       if (msg.type === "results_partial") onPartialResults?.(msg.data);
       if (msg.type === "results_complete") onResults?.(msg.data);
+      if (msg.type === "results_stage") onStageComplete?.(msg.data);
       if (msg.type === "error") onError?.(msg.error);
     };
 
@@ -90,15 +87,8 @@ export function useRecording({
       processorRef.current.audioContext.close();
     }
 
-    if (mediaRef.current?.state !== "inactive") {
-      mediaRef.current?.stop();
-    }
-
     streamRef.current?.getTracks().forEach((t) => t.stop());
     setIsRecording(false);
-
-    // Return blob for S3 upload
-    return new Blob(chunksRef.current, { type: "audio/webm" });
   }
 
   return { start, stop, isRecording };

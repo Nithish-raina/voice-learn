@@ -32,29 +32,33 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
     }
   }
 
-  // Initialize Deepgram stream
-  deepgram = createDeepgramStream({
-    onTranscript({ partial, full, isFinal }) {
-      // Optionally send partial transcripts to frontend for real-time display
-      if (ws.readyState === 1) {
-        ws.send(
-          JSON.stringify({
-            type: "transcript_partial",
-            data: { partial, full },
-          }),
-        );
-      }
-    },
-    onError(error) {
-      console.error("Deepgram error for session:", sessionId, error.message);
-      sendError("STT_ERROR", "Speech-to-text service encountered an error");
-    },
-    onClose() {
-      console.log("Deepgram closed for session:", sessionId);
-    },
-  });
+  function initDeepgram(sampleRate) {
+    deepgram = createDeepgramStream({
+      sampleRate,
+      onTranscript({ partial, full }) {
+        if (ws.readyState === 1) {
+          ws.send(
+            JSON.stringify({
+              type: "transcript_partial",
+              data: { partial, full },
+            }),
+          );
+        }
+      },
+      onError(error) {
+        console.error("Deepgram error for session:", sessionId, error.message);
+        sendError("STT_ERROR", "Speech-to-text service encountered an error");
+      },
+      onClose() {
+        console.log("Deepgram closed for session:", sessionId);
+      },
+    });
+  }
 
   sendStatus("ready");
+
+  // Buffer audio until Deepgram is ready
+  const pendingChunks = [];
 
   // Handle incoming messages
   ws.on("message", async (data, isBinary) => {
@@ -65,6 +69,8 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       audioChunks.push(Buffer.from(data));
       if (deepgram && deepgram.isConnected()) {
         deepgram.sendAudio(data);
+      } else {
+        pendingChunks.push(data);
       }
       return;
     }
@@ -76,6 +82,20 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       if (message.type === "audio_config") {
         audioSampleRate = message.sampleRate || 16000;
         console.log(`Audio sample rate: ${audioSampleRate}Hz`);
+
+        // Now initialize Deepgram with the correct sample rate
+        initDeepgram(audioSampleRate);
+
+        // Flush any audio that arrived before Deepgram was ready
+        // Small delay to let Deepgram WebSocket connect
+        setTimeout(() => {
+          for (const chunk of pendingChunks) {
+            if (deepgram && deepgram.isConnected()) {
+              deepgram.sendAudio(chunk);
+            }
+          }
+          pendingChunks.length = 0;
+        }, 500);
       } else if (message.type === "stop") {
         isStopped = true;
         await handleStop();
@@ -121,13 +141,10 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
   async function handleStop() {
     sendStatus("transcribing");
 
-    // Close Deepgram to flush remaining audio
+    // Close Deepgram and wait for final transcript to flush
     if (deepgram) {
-      deepgram.close();
+      await deepgram.closeAndWait();
     }
-
-    // Wait a moment for final transcript pieces
-    await new Promise((r) => setTimeout(r, 500));
 
     const transcript = deepgram ? deepgram.getTranscript() : "";
     const durationSeconds = Math.floor(
