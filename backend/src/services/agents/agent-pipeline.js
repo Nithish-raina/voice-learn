@@ -92,7 +92,7 @@ export async function runPipeline({
       userId,
       question: f.question,
       answer: f.answer,
-      nextReviewAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // tomorrow
+      nextReviewAt: new Date(), // available for review immediately
       intervalDays: 1,
       easeFactor: 2.5,
       reviewCount: 0,
