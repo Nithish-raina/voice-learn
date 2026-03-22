@@ -149,7 +149,7 @@ export default function Insights() {
                 background:
                   d.count === 0 ? C.border : hColors[Math.min(d.count, 3)],
               }}
-              title={`${d.date}: ${d.count}`}
+              title={`${d.date}: ${d.count} recording${d.count !== 1 ? "s" : ""}`}
             />
           ))}
         </div>
