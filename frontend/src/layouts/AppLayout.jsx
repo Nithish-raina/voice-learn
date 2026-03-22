@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../shared/components/Sidebar";
 import BottomNav from "../shared/components/BottomNav";
@@ -6,6 +7,7 @@ import { useIsMobile } from "../shared/hooks/useIsMobile";
 
 export default function AppLayout() {
   const isMobile = useIsMobile();
+  const [collapsed, setCollapsed] = useState(false);
 
   if (isMobile) {
     return (
@@ -19,7 +21,7 @@ export default function AppLayout() {
 
   return (
     <div style={{ display: "flex", height: "100vh" }}>
-      <Sidebar />
+      <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
         <Outlet />
       </div>
