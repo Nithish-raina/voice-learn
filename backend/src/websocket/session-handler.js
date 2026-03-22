@@ -35,6 +35,15 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
   function initDeepgram(sampleRate) {
     deepgram = createDeepgramStream({
       sampleRate,
+      onOpen() {
+        console.log(`Deepgram ready, flushing ${pendingChunks.length} chunks`);
+        for (const chunk of pendingChunks) {
+          if (deepgram.isConnected()) {
+            deepgram.sendAudio(chunk);
+          }
+        }
+        pendingChunks.length = 0;
+      },
       onTranscript({ partial, full }) {
         if (ws.readyState === 1) {
           ws.send(
@@ -64,44 +73,53 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
   ws.on("message", async (data, isBinary) => {
     if (isStopped) return;
 
-    // Binary data = audio chunk
-    if (isBinary) {
-      audioChunks.push(Buffer.from(data));
-      if (deepgram && deepgram.isConnected()) {
-        deepgram.sendAudio(data);
-      } else {
-        pendingChunks.push(data);
+    // Try to parse as JSON first, even if isBinary is somehow true
+    // This safely handles cases where text is sent as a binary blob
+    let isCommand = false;
+    let message = null;
+
+    try {
+      const msgStr = data.toString("utf8");
+      if (msgStr.includes('"type"')) {
+        message = JSON.parse(msgStr);
+        if (message && message.type) {
+          isCommand = true;
+        }
+      }
+    } catch (e) {
+      // Not JSON, fall back to audio chunk
+    }
+
+    if (isCommand) {
+      try {
+        if (message.type === "audio_config") {
+          audioSampleRate = message.sampleRate || 16000;
+          console.log(`Audio sample rate: ${audioSampleRate}Hz`);
+
+          // Now initialize Deepgram with the correct sample rate
+          initDeepgram(audioSampleRate);
+        } else if (message.type === "stop") {
+          console.log("Received stop command");
+          isStopped = true;
+          await handleStop();
+        }
+      } catch (error) {
+        console.error("Invalid text message:", error);
       }
       return;
     }
 
-    // Text data = JSON command
-    try {
-      const message = JSON.parse(data.toString());
-
-      if (message.type === "audio_config") {
-        audioSampleRate = message.sampleRate || 16000;
-        console.log(`Audio sample rate: ${audioSampleRate}Hz`);
-
-        // Now initialize Deepgram with the correct sample rate
-        initDeepgram(audioSampleRate);
-
-        // Flush any audio that arrived before Deepgram was ready
-        // Small delay to let Deepgram WebSocket connect
-        setTimeout(() => {
-          for (const chunk of pendingChunks) {
-            if (deepgram && deepgram.isConnected()) {
-              deepgram.sendAudio(chunk);
-            }
-          }
-          pendingChunks.length = 0;
-        }, 500);
-      } else if (message.type === "stop") {
-        isStopped = true;
-        await handleStop();
-      }
-    } catch (error) {
-      console.error("Invalid message:", error);
+    // Binary data = audio chunk
+    if (audioChunks.length % 50 === 0) {
+      console.log(
+        `Received binary chunk ${audioChunks.length}, size: ${data.length} bytes`,
+      );
+    }
+    audioChunks.push(Buffer.from(data));
+    if (deepgram && deepgram.isConnected()) {
+      deepgram.sendAudio(data);
+    } else {
+      pendingChunks.push(data);
     }
   });
 
@@ -177,6 +195,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
     try {
       const pcmBuffer = Buffer.concat(audioChunks);
       const wavBuffer = createWavBuffer(pcmBuffer, audioSampleRate, 1, 16);
+
       const audioKey = `audio/${userId}/${sessionId}.wav`;
 
       const bucket = "voice-learn";

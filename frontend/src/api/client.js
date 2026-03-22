@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1";
+const API_URL = import.meta.env.VITE_API_URL || "/api/v1";
 
 export function getAccessToken() {
   const match = document.cookie.match(/(?:^|; )accessToken=([^;]*)/);
@@ -9,10 +9,9 @@ export function getAccessToken() {
 
 export function setAccessToken(token) {
   if (token) {
-    document.cookie = `accessToken=${token}; path=/; max-age=900; SameSite=Strict`;
+    document.cookie = `accessToken=${token}; path=/; max-age=900; SameSite=Lax`;
   } else {
-    document.cookie =
-      "accessToken=; path=/; max-age=0; SameSite=Strict";
+    document.cookie = "accessToken=; path=/; max-age=0; SameSite=Lax";
   }
 }
 

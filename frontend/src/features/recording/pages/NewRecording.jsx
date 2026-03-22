@@ -28,7 +28,7 @@ export default function NewRecording() {
 
   const { mutate: createSession, loading: creating } = useCreateSession();
 
-  const { start, stop } = useRecording({
+  const { start, stop, isRecording } = useRecording({
     sessionId,
     onStatus(stage) {
       setStatus(stage);
@@ -68,30 +68,22 @@ export default function NewRecording() {
 
     try {
       const data = await createSession({ topic, subject, difficulty });
+      // Start recording directly from the click handler so AudioContext
+      // is created within a user gesture (Chrome requires this)
       setSessionId(data.sessionId);
-
-      // Small delay to ensure state is set before useRecording reads sessionId
-      setTimeout(async () => {
-        setPhase("recording");
-      }, 100);
+      setPhase("recording");
+      await start(data.sessionId);
     } catch (err) {
       setError(
-        err.response?.data?.error?.message || "Failed to create session",
+        err.response?.data?.error?.message || err.message || "Failed to start recording",
       );
+      setPhase("setup");
     }
   }
 
   async function handleStop() {
     stop();
     setPhase("processing");
-  }
-
-  // Start recording after phase changes and sessionId is set
-  if (phase === "recording" && sessionId && !stop.isRecording) {
-    start().catch((err) => {
-      setError(err.message);
-      setPhase("setup");
-    });
   }
 
   if (phase === "setup")

@@ -4,16 +4,23 @@ import WebSocket from "ws";
 const DEEPGRAM_URL = "wss://api.deepgram.com/v1/listen";
 
 export function createDeepgramStream(options = {}) {
-  const { onTranscript, onError, onClose, sampleRate = 16000 } = options;
+  const {
+    onTranscript,
+    onError,
+    onClose,
+    onOpen,
+    sampleRate = 16000,
+  } = options;
 
   const params = new URLSearchParams({
     model: "nova-2",
     smart_format: "true",
-    interim_results: "false",
+    interim_results: "true",
     punctuate: "true",
     encoding: "linear16",
     sample_rate: String(sampleRate),
     channels: "1",
+    endpointing: "500",
   });
 
   const dgWs = new WebSocket(`${DEEPGRAM_URL}?${params.toString()}`, {
@@ -23,27 +30,39 @@ export function createDeepgramStream(options = {}) {
   });
 
   let fullTranscript = "";
+  let lastInterim = "";
   let isOpen = false;
 
   dgWs.on("open", () => {
     isOpen = true;
     console.log("Deepgram stream opened");
+    if (onOpen) onOpen();
   });
 
   dgWs.on("message", (data) => {
     try {
       const response = JSON.parse(data.toString());
+      // console.log("Deepgram msg:", JSON.stringify(response));
 
       if (response.type === "Results") {
         const transcript = response.channel?.alternatives?.[0]?.transcript;
         if (transcript && transcript.trim()) {
-          fullTranscript += (fullTranscript ? " " : "") + transcript.trim();
+          const isFinal = response.is_final;
+
+          if (isFinal) {
+            fullTranscript += (fullTranscript ? " " : "") + transcript.trim();
+            lastInterim = ""; // reset because it's committed
+          } else {
+            lastInterim = transcript.trim();
+          }
 
           if (onTranscript) {
             onTranscript({
               partial: transcript.trim(),
-              full: fullTranscript,
-              isFinal: response.is_final,
+              full:
+                fullTranscript +
+                (lastInterim ? (fullTranscript ? " " : "") + lastInterim : ""),
+              isFinal,
             });
           }
         }
@@ -95,7 +114,10 @@ export function createDeepgramStream(options = {}) {
     },
 
     getTranscript() {
-      return fullTranscript;
+      const combined =
+        fullTranscript +
+        (lastInterim ? (fullTranscript ? " " : "") + lastInterim : "");
+      return combined.trim();
     },
 
     isConnected() {
