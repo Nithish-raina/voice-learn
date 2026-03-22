@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "../shared/components/Sidebar";
 import BottomNav from "../shared/components/BottomNav";
+import MobileHeader from "../shared/components/MobileHeader";
 import { useIsMobile } from "../shared/hooks/useIsMobile";
 
 export default function AppLayout() {
@@ -9,6 +10,7 @@ export default function AppLayout() {
   if (isMobile) {
     return (
       <div style={{ minHeight: "100vh", paddingBottom: 64 }}>
+        <MobileHeader />
         <Outlet />
         <BottomNav />
       </div>
