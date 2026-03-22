@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useSessions } from "../hooks/useSessions";
 import ScoreRing from "../../../shared/components/ScoreRing";
 import Pill from "../../../shared/components/Pill";
-import LoadingSpinner from "../../../shared/components/LoadingSpinner";
+import LibrarySkeleton from "../components/LibrarySkeleton";
 import { Search, Star } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
@@ -37,7 +37,7 @@ export default function Library() {
     });
   }
 
-  if (loading && !data) return <LoadingSpinner />;
+  if (loading && !data) return <LibrarySkeleton />;
 
   return (
     <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>

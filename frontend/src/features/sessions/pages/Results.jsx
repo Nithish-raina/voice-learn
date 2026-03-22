@@ -7,7 +7,7 @@ import Transcript from "../components/Transcript";
 import AudioPlayer from "../components/AudioPlayer";
 import TestYourself from "../components/TestYourself";
 import FlashcardPreview from "../components/FlashcardPreview";
-import LoadingSpinner from "../../../shared/components/LoadingSpinner";
+import ResultsSkeleton from "../components/ResultsSkeleton";
 import { ArrowLeft } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
@@ -25,7 +25,7 @@ export default function Results() {
     : streamedResults || null;
 
   if (loading && !streamedResults)
-    return <LoadingSpinner message="Loading results..." />;
+    return <ResultsSkeleton />;
   if (!session)
     return (
       <div style={{ padding: 28 }}>

@@ -2,14 +2,14 @@ import { useInsights } from "../hooks/useInsights";
 import ScoreTrend from "../components/ScoreTrend";
 import SubjectBreakdown from "../components/SubjectBreakdown";
 import TopicRanking from "../components/TopicRanking";
-import LoadingSpinner from "../../../shared/components/LoadingSpinner";
+import InsightsSkeleton from "../components/InsightsSkeleton";
 import { Zap, Flame } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
 export default function Insights() {
   const { data, loading } = useInsights();
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <InsightsSkeleton />;
   if (!data)
     return (
       <div style={{ padding: 28 }}>

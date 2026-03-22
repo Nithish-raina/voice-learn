@@ -4,7 +4,7 @@ import { useDashboard } from "../hooks/useDashboard";
 import RecentSessions from "../components/RecentSessions";
 import ActivityHeatmap from "../components/ActivityHeatMap";
 import StatsCards from "../components/StatsCards";
-import LoadingSpinner from "../../../shared/components/LoadingSpinner";
+import DashboardSkeleton from "../components/DashboardSkeleton";
 import { Flame, Layers, ArrowRight } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
@@ -13,7 +13,7 @@ export default function Dashboard() {
   const { data, loading } = useDashboard();
   const navigate = useNavigate();
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) return <DashboardSkeleton />;
   if (!data)
     return (
       <div style={{ padding: 28 }}>

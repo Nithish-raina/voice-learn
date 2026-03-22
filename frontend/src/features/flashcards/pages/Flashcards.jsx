@@ -5,7 +5,7 @@ import { useReviewFlashcard } from "../hooks/useReviewFlashcard";
 import FlashcardStats from "../components/FlashcardStats";
 import FlashcardList from "../components/FlashcardList";
 import FlashcardCard from "../components/FlashcardCard";
-import LoadingSpinner from "../../../shared/components/LoadingSpinner";
+import FlashcardsSkeleton from "../components/FlashcardsSkeleton";
 import Pill from "../../../shared/components/Pill";
 import { ArrowLeft } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
@@ -34,7 +34,7 @@ export default function Flashcards() {
     refetchDue();
   }
 
-  if (statsLoading || dueLoading) return <LoadingSpinner />;
+  if (statsLoading || dueLoading) return <FlashcardsSkeleton />;
 
   // Review mode
   if (reviewing) {
