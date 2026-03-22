@@ -1,16 +1,20 @@
 import Skeleton from "../../../shared/components/Skeleton";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 
 export default function DashboardSkeleton() {
+  const isMobile = useIsMobile();
+  const p = isMobile ? 16 : 28;
+
   return (
     <Skeleton>
-      <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>
+      <div style={{ padding: p, maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
         <div
           style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 24,
+            marginBottom: isMobile ? 16 : 24,
           }}
         >
           <div>
@@ -21,7 +25,7 @@ export default function DashboardSkeleton() {
         </div>
 
         {/* Content */}
-        <div style={{ display: "flex", gap: 20 }}>
+        <div style={{ display: "flex", gap: isMobile ? 16 : 20, flexDirection: isMobile ? "column" : "row" }}>
           {/* Recent sessions */}
           <div style={{ flex: 1.5 }}>
             <Skeleton.Bar width={160} height={14} style={{ marginBottom: 12 }} />

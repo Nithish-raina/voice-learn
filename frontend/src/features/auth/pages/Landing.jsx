@@ -1,9 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { Brain, Mic, Layers } from "lucide-react";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import { C } from "../../../shared/styles/colors";
 
 export default function Landing() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
+
   const steps = [
     {
       icon: <Mic size={20} color={C.primary} />,
@@ -30,14 +33,14 @@ export default function Landing() {
         alignItems: "center",
         justifyContent: "center",
         minHeight: "100vh",
-        padding: 48,
+        padding: isMobile ? "40px 20px" : 48,
         textAlign: "center",
       }}
     >
       <div
         style={{
-          width: 56,
-          height: 56,
+          width: isMobile ? 48 : 56,
+          height: isMobile ? 48 : 56,
           borderRadius: 14,
           background: `linear-gradient(135deg, ${C.primary}, ${C.secondary})`,
           display: "flex",
@@ -46,14 +49,14 @@ export default function Landing() {
           marginBottom: 20,
         }}
       >
-        <Brain size={28} color="#fff" />
+        <Brain size={isMobile ? 24 : 28} color="#fff" />
       </div>
-      <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: -1 }}>
+      <h1 style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, letterSpacing: -1 }}>
         VoiceLearn
       </h1>
       <p
         style={{
-          fontSize: 18,
+          fontSize: isMobile ? 16 : 18,
           color: C.textSec,
           margin: "8px 0 4px",
           fontWeight: 500,
@@ -63,7 +66,7 @@ export default function Landing() {
       </p>
       <p
         style={{
-          fontSize: 14,
+          fontSize: isMobile ? 13 : 14,
           color: C.textDim,
           maxWidth: 400,
           lineHeight: 1.6,
@@ -76,7 +79,7 @@ export default function Landing() {
         <button
           onClick={() => navigate("/signup")}
           style={{
-            padding: "12px 32px",
+            padding: isMobile ? "12px 24px" : "12px 32px",
             borderRadius: 10,
             border: "none",
             background: C.primary,
@@ -91,7 +94,7 @@ export default function Landing() {
         <button
           onClick={() => navigate("/login")}
           style={{
-            padding: "12px 32px",
+            padding: isMobile ? "12px 24px" : "12px 32px",
             borderRadius: 10,
             border: `1px solid ${C.border}`,
             background: "transparent",
@@ -104,7 +107,15 @@ export default function Landing() {
           Log In
         </button>
       </div>
-      <div style={{ display: "flex", gap: 40, marginTop: 56 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: isMobile ? 20 : 40,
+          marginTop: isMobile ? 40 : 56,
+          flexDirection: isMobile ? "column" : "row",
+          alignItems: "center",
+        }}
+      >
         {steps.map((s, i) => (
           <div key={i} style={{ textAlign: "center", maxWidth: 180 }}>
             <div

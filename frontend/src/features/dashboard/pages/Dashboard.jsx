@@ -5,6 +5,7 @@ import RecentSessions from "../components/RecentSessions";
 import ActivityHeatmap from "../components/ActivityHeatMap";
 import StatsCards from "../components/StatsCards";
 import DashboardSkeleton from "../components/DashboardSkeleton";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import { Flame, Layers, ArrowRight } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
@@ -12,11 +13,12 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { data, loading } = useDashboard();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   if (loading) return <DashboardSkeleton />;
   if (!data)
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: isMobile ? 16 : 28 }}>
         <p style={{ color: C.textDim }}>Failed to load dashboard</p>
       </div>
     );
@@ -29,18 +31,18 @@ export default function Dashboard() {
         : "evening";
 
   return (
-    <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>
+    <div style={{ padding: isMobile ? 16 : 28, maxWidth: 960, margin: "0 auto" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 24,
+          marginBottom: isMobile ? 16 : 24,
         }}
       >
         <div>
           <p style={{ fontSize: 13, color: C.textDim }}>Good {greeting}</p>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginTop: 2 }}>
+          <h2 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, marginTop: 2 }}>
             {user?.name} 👋
           </h2>
         </div>
@@ -67,7 +69,7 @@ export default function Dashboard() {
         <div
           onClick={() => navigate("/flashcards")}
           style={{
-            padding: 16,
+            padding: isMobile ? 12 : 16,
             borderRadius: 12,
             background: C.primaryDim,
             border: `1px solid ${C.primaryBorder}`,
@@ -75,7 +77,7 @@ export default function Dashboard() {
             justifyContent: "space-between",
             alignItems: "center",
             cursor: "pointer",
-            marginBottom: 20,
+            marginBottom: isMobile ? 16 : 20,
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -88,12 +90,13 @@ export default function Dashboard() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+                ...(isMobile ? { display: "none" } : {}),
               }}
             >
               <Layers size={18} color={C.primary} />
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600 }}>
+              <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600 }}>
                 {data.dueFlashcardsCount} flashcards due for review
               </p>
               <p style={{ fontSize: 12, color: C.textDim, marginTop: 2 }}>
@@ -105,7 +108,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 20 }}>
+      <div style={{
+        display: "flex",
+        gap: isMobile ? 16 : 20,
+        flexDirection: isMobile ? "column" : "row",
+      }}>
         <div style={{ flex: 1.5 }}>
           <div
             style={{

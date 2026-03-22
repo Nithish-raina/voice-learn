@@ -50,8 +50,10 @@ export default function Signup() {
       <form
         onSubmit={handleSubmit}
         style={{
-          width: 400,
-          padding: 32,
+          width: "100%",
+          maxWidth: 400,
+          padding: 24,
+          margin: "0 16px",
           background: C.surface,
           borderRadius: 16,
           border: `1px solid ${C.border}`,

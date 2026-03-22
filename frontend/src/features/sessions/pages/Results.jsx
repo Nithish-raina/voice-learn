@@ -8,6 +8,7 @@ import AudioPlayer from "../components/AudioPlayer";
 import TestYourself from "../components/TestYourself";
 import FlashcardPreview from "../components/FlashcardPreview";
 import ResultsSkeleton from "../components/ResultsSkeleton";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import { ArrowLeft } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
@@ -16,25 +17,24 @@ export default function Results() {
   const navigate = useNavigate();
   const location = useLocation();
   const streamedResults = location.state?.streamedResults;
+  const isMobile = useIsMobile();
 
   const { data: apiSession, loading } = useSession(id);
 
-  // Prefer API data as base, overlay streamed results if present
   const session = apiSession
     ? { ...apiSession, ...(streamedResults || {}) }
     : streamedResults || null;
 
-  if (loading && !streamedResults)
-    return <ResultsSkeleton />;
+  if (loading && !streamedResults) return <ResultsSkeleton />;
   if (!session)
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: isMobile ? 16 : 28 }}>
         <p style={{ color: C.textDim }}>Session not found</p>
       </div>
     );
 
   return (
-    <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>
+    <div style={{ padding: isMobile ? 16 : 28, maxWidth: 960, margin: "0 auto" }}>
       <button
         onClick={() => navigate("/dashboard")}
         style={{
@@ -47,7 +47,7 @@ export default function Results() {
           fontSize: 13,
           cursor: "pointer",
           padding: 0,
-          marginBottom: 20,
+          marginBottom: isMobile ? 14 : 20,
         }}
       >
         <ArrowLeft size={16} /> Back to Home
@@ -57,15 +57,25 @@ export default function Results() {
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 20,
+          alignItems: isMobile ? "center" : "flex-start",
+          marginBottom: isMobile ? 16 : 20,
+          gap: 12,
         }}
       >
-        <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2
+            style={{
+              fontSize: isMobile ? 18 : 22,
+              fontWeight: 700,
+              marginBottom: 6,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: isMobile ? "nowrap" : "normal",
+            }}
+          >
             {session.topic}
           </h2>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
             <Pill>{session.subject}</Pill>
             <Pill color={C.amber} bg={C.amberDim}>
               {session.difficulty}
@@ -79,7 +89,11 @@ export default function Results() {
             )}
           </div>
         </div>
-        <ScoreRing score={session.score || 0} size={76} strokeWidth={5} />
+        <ScoreRing
+          score={session.score || 0}
+          size={isMobile ? 60 : 76}
+          strokeWidth={isMobile ? 4 : 5}
+        />
       </div>
 
       <div style={{ marginBottom: 16 }}>
@@ -96,7 +110,13 @@ export default function Results() {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexDirection: isMobile ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
           <TestYourself qas={session.testYourselfQas} />
         </div>

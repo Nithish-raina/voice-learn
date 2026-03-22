@@ -3,16 +3,18 @@ import ScoreTrend from "../components/ScoreTrend";
 import SubjectBreakdown from "../components/SubjectBreakdown";
 import TopicRanking from "../components/TopicRanking";
 import InsightsSkeleton from "../components/InsightsSkeleton";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import { Zap, Flame } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
 export default function Insights() {
   const { data, loading } = useInsights();
+  const isMobile = useIsMobile();
 
   if (loading) return <InsightsSkeleton />;
   if (!data)
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: isMobile ? 16 : 28 }}>
         <p style={{ color: C.textDim }}>Failed to load insights</p>
       </div>
     );
@@ -25,16 +27,16 @@ export default function Insights() {
   ];
 
   return (
-    <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>
+    <div style={{ padding: isMobile ? 16 : 28, maxWidth: 960, margin: "0 auto" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 20,
+          marginBottom: isMobile ? 16 : 20,
         }}
       >
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Insights</h2>
+        <h2 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 700 }}>Insights</h2>
         <div
           style={{
             display: "flex",
@@ -50,13 +52,22 @@ export default function Insights() {
           <span style={{ fontSize: 14, fontWeight: 700, color: C.amber }}>
             {data.streak.current}
           </span>
-          <span style={{ fontSize: 12, color: C.textDim }}>
-            day streak (best: {data.streak.longest})
-          </span>
+          {!isMobile && (
+            <span style={{ fontSize: 12, color: C.textDim }}>
+              day streak (best: {data.streak.longest})
+            </span>
+          )}
         </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)",
+          gap: 10,
+          marginBottom: 16,
+        }}
+      >
         {[
           { l: "Recordings", v: data.stats.totalRecordings },
           { l: "Topics", v: data.stats.totalTopics },
@@ -69,15 +80,14 @@ export default function Insights() {
           <div
             key={i}
             style={{
-              flex: 1,
-              padding: 14,
+              padding: isMobile ? 12 : 14,
               borderRadius: 10,
               background: C.card,
               border: `1px solid ${C.border}`,
               textAlign: "center",
             }}
           >
-            <p style={{ fontSize: 18, fontWeight: 700 }}>{s.v}</p>
+            <p style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700 }}>{s.v}</p>
             <p style={{ fontSize: 11, color: C.textDim, marginTop: 4 }}>
               {s.l}
             </p>
@@ -85,11 +95,18 @@ export default function Insights() {
         ))}
       </div>
 
-      <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          marginBottom: 12,
+          flexDirection: isMobile ? "column" : "row",
+        }}
+      >
         <div
           style={{
             flex: 1,
-            padding: 18,
+            padding: isMobile ? 14 : 18,
             borderRadius: 12,
             background: C.card,
             border: `1px solid ${C.border}`,
@@ -103,7 +120,7 @@ export default function Insights() {
         <div
           style={{
             flex: 1,
-            padding: 18,
+            padding: isMobile ? 14 : 18,
             borderRadius: 12,
             background: C.card,
             border: `1px solid ${C.border}`,
@@ -123,7 +140,7 @@ export default function Insights() {
 
       <div
         style={{
-          padding: 16,
+          padding: isMobile ? 12 : 16,
           borderRadius: 12,
           background: C.card,
           border: `1px solid ${C.border}`,
@@ -137,7 +154,7 @@ export default function Insights() {
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(7, 1fr)",
-            gap: 3,
+            gap: isMobile ? 2 : 3,
           }}
         >
           {data.activityHeatmap.map((d, i) => (

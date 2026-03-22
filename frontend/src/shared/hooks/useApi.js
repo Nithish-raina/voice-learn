@@ -29,7 +29,7 @@ export function useApi(url, options = {}) {
 
   useEffect(() => {
     if (immediate) fetch();
-  }, []);
+  }, [fetch, immediate]);
 
   return { data, loading, error, refetch: fetch };
 }

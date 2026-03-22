@@ -4,6 +4,7 @@ import { useSessions } from "../hooks/useSessions";
 import ScoreRing from "../../../shared/components/ScoreRing";
 import Pill from "../../../shared/components/Pill";
 import LibrarySkeleton from "../components/LibrarySkeleton";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import { Search, X, Star, Loader } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
@@ -23,6 +24,7 @@ export default function Library() {
   const [search, setSearch] = useState("");
   const debounceRef = useRef(null);
   const initialLoad = useRef(true);
+  const isMobile = useIsMobile();
 
   function doFetch(searchVal, subjectVal) {
     fetch({
@@ -31,33 +33,32 @@ export default function Library() {
     });
   }
 
-  // Initial load + subject changes fire immediately
   useEffect(() => {
-    initialLoad.current = false;
-    doFetch(search, subject);
-  }, [subject]);
+    // Both search and subject are tracked in one effect
+    if (initialLoad.current) {
+      initialLoad.current = false;
+      doFetch(search, subject);
+      return;
+    }
 
-  // Debounced search — 400ms after user stops typing
-  useEffect(() => {
-    if (initialLoad.current) return;
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       doFetch(search, subject);
     }, 400);
+
     return () => clearTimeout(debounceRef.current);
-  }, [search]);
+  }, [search, subject]);
 
   if (loading && !data) return <LibrarySkeleton />;
 
   const isSearching = loading && !!data;
 
   return (
-    <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>
+    <div style={{ padding: isMobile ? 16 : 28, maxWidth: 960, margin: "0 auto" }}>
+      <h2 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 700, marginBottom: 16 }}>
         My Library
       </h2>
 
-      {/* Search bar */}
       <div
         style={{
           display: "flex",
@@ -111,12 +112,9 @@ export default function Library() {
         )}
       </div>
 
-      {/* Searching indicator */}
       <div style={{ height: 20, marginBottom: 2 }}>
         {isSearching && (
-          <p style={{ fontSize: 12, color: C.textDim }}>
-            Searching...
-          </p>
+          <p style={{ fontSize: 12, color: C.textDim }}>Searching...</p>
         )}
         {!isSearching && search && data?.sessions && (
           <p style={{ fontSize: 12, color: C.textDim }}>
@@ -125,7 +123,16 @@ export default function Library() {
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 6,
+          marginBottom: 20,
+          overflowX: "auto",
+          paddingBottom: 4,
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         {subjects.map((s) => (
           <button
             key={s}
@@ -139,6 +146,8 @@ export default function Library() {
               fontSize: 12,
               fontWeight: 500,
               cursor: "pointer",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             {s}
@@ -155,7 +164,7 @@ export default function Library() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
           gap: 12,
           opacity: isSearching ? 0.5 : 1,
           transition: "opacity 0.2s",
@@ -166,34 +175,66 @@ export default function Library() {
             key={s.id}
             onClick={() => navigate(`/sessions/${s.id}`)}
             style={{
-              padding: 18,
+              padding: isMobile ? 14 : 18,
               borderRadius: 12,
               background: C.card,
               border: `1px solid ${C.border}`,
               cursor: "pointer",
+              ...(isMobile
+                ? { display: "flex", alignItems: "center", gap: 14 }
+                : {}),
             }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                marginBottom: 10,
-              }}
-            >
-              <ScoreRing score={s.score || 0} size={40} strokeWidth={3} />
-              {s.isMastered && (
-                <Star size={16} color="#eab308" fill="#eab308" />
-              )}
-            </div>
-            <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-              {s.topic}
-            </p>
-            <Pill>{s.subject}</Pill>
-            <p style={{ fontSize: 11, color: C.textDim, marginTop: 8 }}>
-              {s.attemptCount} attempt{s.attemptCount > 1 ? "s" : ""} ·{" "}
-              {new Date(s.createdAt).toLocaleDateString()}
-            </p>
+            {isMobile ? (
+              <>
+                <ScoreRing score={s.score || 0} size={40} strokeWidth={3} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      marginBottom: 4,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {s.topic}
+                  </p>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <Pill>{s.subject}</Pill>
+                    <span style={{ fontSize: 11, color: C.textDim }}>
+                      {new Date(s.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+                {s.isMastered && <Star size={14} color="#eab308" fill="#eab308" />}
+              </>
+            ) : (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: 10,
+                  }}
+                >
+                  <ScoreRing score={s.score || 0} size={40} strokeWidth={3} />
+                  {s.isMastered && (
+                    <Star size={16} color="#eab308" fill="#eab308" />
+                  )}
+                </div>
+                <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                  {s.topic}
+                </p>
+                <Pill>{s.subject}</Pill>
+                <p style={{ fontSize: 11, color: C.textDim, marginTop: 8 }}>
+                  {s.attemptCount} attempt{s.attemptCount > 1 ? "s" : ""} ·{" "}
+                  {new Date(s.createdAt).toLocaleDateString()}
+                </p>
+              </>
+            )}
           </div>
         ))}
       </div>

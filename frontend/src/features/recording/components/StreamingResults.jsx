@@ -5,6 +5,7 @@ import StrengthsGaps from "../../sessions/components/StrengthsGaps";
 import TestYourself from "../../sessions/components/TestYourself";
 import FlashcardPreview from "../../sessions/components/FlashcardPreview";
 import ConceptsList from "./ConceptsList";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import { C } from "../../../shared/styles/colors";
 
 export default function StreamingResults({
@@ -13,19 +14,31 @@ export default function StreamingResults({
   subject,
   difficulty,
 }) {
+  const isMobile = useIsMobile();
+
   return (
-    <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>
+    <div style={{ padding: isMobile ? 16 : 28, maxWidth: 960, margin: "0 auto" }}>
       {/* Header */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: 20,
+          alignItems: isMobile ? "center" : "flex-start",
+          marginBottom: isMobile ? 16 : 20,
+          gap: 12,
         }}
       >
-        <div>
-          <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h2
+            style={{
+              fontSize: isMobile ? 18 : 22,
+              fontWeight: 700,
+              marginBottom: 6,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: isMobile ? "nowrap" : "normal",
+            }}
+          >
             {topic}
           </h2>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -36,12 +49,16 @@ export default function StreamingResults({
           </div>
         </div>
         {results.score != null ? (
-          <ScoreRing score={results.score} size={76} strokeWidth={5} />
+          <ScoreRing
+            score={results.score}
+            size={isMobile ? 60 : 76}
+            strokeWidth={isMobile ? 4 : 5}
+          />
         ) : (
           <div
             style={{
-              width: 76,
-              height: 76,
+              width: isMobile ? 60 : 76,
+              height: isMobile ? 60 : 76,
               borderRadius: "50%",
               border: `5px solid ${C.border}`,
               display: "flex",
@@ -82,7 +99,13 @@ export default function StreamingResults({
       </div>
 
       {/* Test Yourself + Flashcards */}
-      <div style={{ display: "flex", gap: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexDirection: isMobile ? "column" : "row",
+        }}
+      >
         <div style={{ flex: 1 }}>
           {results.testYourselfQas ? (
             <TestYourself qas={results.testYourselfQas} />

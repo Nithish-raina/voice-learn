@@ -6,6 +6,7 @@ import FlashcardStats from "../components/FlashcardStats";
 import FlashcardList from "../components/FlashcardList";
 import FlashcardCard from "../components/FlashcardCard";
 import FlashcardsSkeleton from "../components/FlashcardsSkeleton";
+import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import Pill from "../../../shared/components/Pill";
 import { ArrowLeft } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
@@ -22,6 +23,7 @@ export default function Flashcards() {
     refetch: refetchDue,
   } = useFlashcards({ due: true });
   const { review } = useReviewFlashcard();
+  const isMobile = useIsMobile();
 
   const [reviewing, setReviewing] = useState(null);
   const [flipped, setFlipped] = useState(false);
@@ -39,7 +41,7 @@ export default function Flashcards() {
   // Review mode
   if (reviewing) {
     return (
-      <div style={{ padding: 28, maxWidth: 520, margin: "0 auto" }}>
+      <div style={{ padding: isMobile ? 16 : 28, maxWidth: 520, margin: "0 auto" }}>
         <div style={{ marginBottom: 20 }}>
           <button
             onClick={() => {
@@ -88,9 +90,9 @@ export default function Flashcards() {
 
   // Overview
   return (
-    <div style={{ padding: 28, maxWidth: 700, margin: "0 auto" }}>
-      <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700 }}>Flashcards</h2>
+    <div style={{ padding: isMobile ? 16 : 28, maxWidth: 700, margin: "0 auto" }}>
+      <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+        <h2 style={{ fontSize: isMobile ? 18 : 20, fontWeight: 700 }}>Flashcards</h2>
         <p style={{ fontSize: 13, color: C.textDim, marginTop: 4 }}>
           Auto-generated from your recording gaps · Scheduled using spaced
           repetition
@@ -98,7 +100,7 @@ export default function Flashcards() {
       </div>
 
       {statsData && (
-        <div style={{ marginBottom: 24 }}>
+        <div style={{ marginBottom: isMobile ? 16 : 24 }}>
           <FlashcardStats stats={statsData} />
         </div>
       )}
@@ -126,7 +128,7 @@ export default function Flashcards() {
 
       <div
         style={{
-          padding: 16,
+          padding: isMobile ? 12 : 16,
           borderRadius: 10,
           background: C.card,
           border: `1px solid ${C.border}`,
