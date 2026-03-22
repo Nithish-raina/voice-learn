@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSessions } from "../hooks/useSessions";
 import ScoreRing from "../../../shared/components/ScoreRing";
 import Pill from "../../../shared/components/Pill";
 import LibrarySkeleton from "../components/LibrarySkeleton";
-import { Search, Star } from "lucide-react";
+import { Search, X, Star, Loader } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
 const subjects = [
@@ -21,23 +21,35 @@ export default function Library() {
   const { data, loading, fetch } = useSessions();
   const [subject, setSubject] = useState("All");
   const [search, setSearch] = useState("");
+  const debounceRef = useRef(null);
+  const initialLoad = useRef(true);
 
-  useEffect(() => {
+  function doFetch(searchVal, subjectVal) {
     fetch({
-      subject: subject === "All" ? undefined : subject,
-      search: search || undefined,
-    });
-  }, [subject]);
-
-  function handleSearch(e) {
-    e.preventDefault();
-    fetch({
-      subject: subject === "All" ? undefined : subject,
-      search: search || undefined,
+      subject: subjectVal === "All" ? undefined : subjectVal,
+      search: searchVal || undefined,
     });
   }
 
+  // Initial load + subject changes fire immediately
+  useEffect(() => {
+    initialLoad.current = false;
+    doFetch(search, subject);
+  }, [subject]);
+
+  // Debounced search — 400ms after user stops typing
+  useEffect(() => {
+    if (initialLoad.current) return;
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      doFetch(search, subject);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [search]);
+
   if (loading && !data) return <LibrarySkeleton />;
+
+  const isSearching = loading && !!data;
 
   return (
     <div style={{ padding: 28, maxWidth: 960, margin: "0 auto" }}>
@@ -45,38 +57,73 @@ export default function Library() {
         My Library
       </h2>
 
-      <form
-        onSubmit={handleSearch}
-        style={{ display: "flex", gap: 10, marginBottom: 8 }}
+      {/* Search bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "9px 14px",
+          borderRadius: 8,
+          background: C.input,
+          border: `1px solid ${search ? C.primary : C.border}`,
+          marginBottom: 8,
+          transition: "border-color 0.2s",
+        }}
       >
-        <div
+        {isSearching ? (
+          <Loader
+            size={16}
+            color={C.primary}
+            style={{ animation: "spin 0.8s linear infinite", flexShrink: 0 }}
+          />
+        ) : (
+          <Search size={16} color={C.textDim} style={{ flexShrink: 0 }} />
+        )}
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search topics..."
           style={{
             flex: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "9px 14px",
-            borderRadius: 8,
-            background: C.input,
-            border: `1px solid ${C.border}`,
+            background: "none",
+            border: "none",
+            color: C.text,
+            fontSize: 13,
+            outline: "none",
           }}
-        >
-          <Search size={16} color={C.textDim} />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search topics..."
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
             style={{
-              flex: 1,
               background: "none",
               border: "none",
-              color: C.text,
-              fontSize: 13,
-              outline: "none",
+              padding: 0,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
             }}
-          />
-        </div>
-      </form>
+          >
+            <X size={14} color={C.textDim} />
+          </button>
+        )}
+      </div>
+
+      {/* Searching indicator */}
+      <div style={{ height: 20, marginBottom: 2 }}>
+        {isSearching && (
+          <p style={{ fontSize: 12, color: C.textDim }}>
+            Searching...
+          </p>
+        )}
+        {!isSearching && search && data?.sessions && (
+          <p style={{ fontSize: 12, color: C.textDim }}>
+            {data.sessions.length} result{data.sessions.length !== 1 ? "s" : ""} for "{search}"
+          </p>
+        )}
+      </div>
 
       <div style={{ display: "flex", gap: 6, marginBottom: 20 }}>
         {subjects.map((s) => (
@@ -99,8 +146,10 @@ export default function Library() {
         ))}
       </div>
 
-      {data?.sessions?.length === 0 && (
-        <p style={{ color: C.textDim, fontSize: 13 }}>No sessions found</p>
+      {!isSearching && data?.sessions?.length === 0 && (
+        <p style={{ color: C.textDim, fontSize: 13 }}>
+          {search ? `No results for "${search}"` : "No sessions found"}
+        </p>
       )}
 
       <div
@@ -108,6 +157,8 @@ export default function Library() {
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: 12,
+          opacity: isSearching ? 0.5 : 1,
+          transition: "opacity 0.2s",
         }}
       >
         {data?.sessions?.map((s) => (
