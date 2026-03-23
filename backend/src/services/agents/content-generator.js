@@ -40,5 +40,10 @@ Return this exact JSON structure:
   ]
 }`;
 
-  return callLLM({ system, prompt, maxTokens: 1500 });
+  try {
+    return await callLLM({ system, prompt, maxTokens: 1500 });
+  } catch (error) {
+    console.error("[ContentGenerator] Failed:", error.message);
+    throw new Error("Failed to generate study content.");
+  }
 }

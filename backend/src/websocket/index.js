@@ -39,9 +39,16 @@ export function setupWebSocket(server) {
         return;
       }
 
-      const session = await prisma.session.findUnique({
-        where: { id: sessionId },
-      });
+      let session;
+      try {
+        session = await prisma.session.findUnique({
+          where: { id: sessionId },
+        });
+      } catch (error) {
+        console.error("[WS] Database error looking up session:", error.message);
+        ws.close(4000, "Unable to verify session. Please try again.");
+        return;
+      }
 
       if (!session) {
         ws.close(4003, "Session not found");
@@ -58,11 +65,11 @@ export function setupWebSocket(server) {
         return;
       }
 
-      console.log(`WebSocket connected: session=${sessionId} user=${userId}`);
+      console.log(`[WS] Connected: session=${sessionId} user=${userId}`);
       sessionHandler(ws, { sessionId, userId, session });
     } catch (error) {
-      console.error("WebSocket connection error:", error);
-      ws.close(4000, "Connection failed");
+      console.error("[WS] Connection error:", error.message);
+      ws.close(4000, "Connection failed. Please try again.");
     }
   });
 

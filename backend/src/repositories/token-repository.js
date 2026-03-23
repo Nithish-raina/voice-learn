@@ -14,26 +14,44 @@ function hashToken(token) {
 
 export const tokenRepository = {
   async storeRefreshToken(userId, token) {
-    const hash = hashToken(token);
-    await redis.set(tokenKey(userId, hash), "1", "EX", REFRESH_TOKEN_TTL);
+    try {
+      const hash = hashToken(token);
+      await redis.set(tokenKey(userId, hash), "1", "EX", REFRESH_TOKEN_TTL);
+    } catch (error) {
+      console.error("[TokenRepo] Failed to store refresh token:", error.message);
+      throw new Error("Unable to complete authentication. Please try again.");
+    }
   },
 
   async verifyRefreshToken(userId, token) {
-    const hash = hashToken(token);
-    const exists = await redis.exists(tokenKey(userId, hash));
-    return exists === 1;
+    try {
+      const hash = hashToken(token);
+      const exists = await redis.exists(tokenKey(userId, hash));
+      return exists === 1;
+    } catch (error) {
+      console.error("[TokenRepo] Failed to verify refresh token:", error.message);
+      return false;
+    }
   },
 
   async deleteRefreshToken(userId, token) {
-    const hash = hashToken(token);
-    await redis.del(tokenKey(userId, hash));
+    try {
+      const hash = hashToken(token);
+      await redis.del(tokenKey(userId, hash));
+    } catch (error) {
+      console.error("[TokenRepo] Failed to delete refresh token:", error.message);
+    }
   },
 
   async deleteAllRefreshTokens(userId) {
-    const pattern = `refresh:${userId}:*`;
-    const keys = await redis.keys(pattern);
-    if (keys.length > 0) {
-      await redis.del(...keys);
+    try {
+      const pattern = `refresh:${userId}:*`;
+      const keys = await redis.keys(pattern);
+      if (keys.length > 0) {
+        await redis.del(...keys);
+      }
+    } catch (error) {
+      console.error("[TokenRepo] Failed to delete all refresh tokens:", error.message);
     }
   },
 };

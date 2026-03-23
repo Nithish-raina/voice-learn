@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AppError } from "../utils/errors.js";
 
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -10,14 +11,38 @@ export async function callLLM({
   prompt,
   maxTokens = 2000,
 }) {
-  const response = await anthropic.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system,
-    messages: [{ role: "user", content: prompt }],
-  });
+  let response;
+  try {
+    response = await anthropic.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system,
+      messages: [{ role: "user", content: prompt }],
+    });
+  } catch (error) {
+    if (error instanceof Anthropic.RateLimitError) {
+      console.error("[LLM] Rate limit exceeded:", error.message);
+      throw new AppError("Service is temporarily busy. Please try again shortly.", 503, "LLM_RATE_LIMITED");
+    }
+    if (error instanceof Anthropic.AuthenticationError) {
+      console.error("[LLM] Authentication failed:", error.message);
+      throw new AppError("Service configuration error. Please contact support.", 500, "LLM_AUTH_ERROR");
+    }
+    if (error instanceof Anthropic.APIConnectionError) {
+      console.error("[LLM] Connection failed:", error.message);
+      throw new AppError("Unable to reach analysis service. Please try again.", 503, "LLM_CONNECTION_ERROR");
+    }
+    console.error("[LLM] API call failed:", error.message);
+    throw new AppError("Analysis service is currently unavailable. Please try again.", 503, "LLM_UNAVAILABLE");
+  }
 
-  let text = response.content[0].text;
+  const content = response.content?.[0];
+  if (!content || !content.text) {
+    console.error("[LLM] Empty response received");
+    throw new AppError("Received an empty response from analysis service.", 502, "LLM_EMPTY_RESPONSE");
+  }
+
+  let text = content.text;
 
   // Strip markdown code fences if present
   text = text.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "");

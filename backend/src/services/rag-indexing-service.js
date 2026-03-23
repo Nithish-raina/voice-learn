@@ -38,14 +38,20 @@ function chunkTranscript(transcript) {
 export const ragIndexingService = {
   async indexSession(sessionId) {
     // Fetch session with flashcards
-    const session = await prisma.session.findUnique({
-      where: { id: sessionId },
-      include: {
-        flashcards: {
-          where: { status: "active" },
+    let session;
+    try {
+      session = await prisma.session.findUnique({
+        where: { id: sessionId },
+        include: {
+          flashcards: {
+            where: { status: "active" },
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error(`[RAG-Index] Database error fetching session ${sessionId}:`, error.message);
+      throw new Error(`Failed to fetch session data for indexing`);
+    }
 
     if (!session) {
       throw new Error(`Session not found: ${sessionId}`);
@@ -122,13 +128,13 @@ export const ragIndexingService = {
     }
 
     if (allChunks.length === 0) {
-      console.log(`No chunks to index for session: ${sessionId}`);
+      console.log(`[RAG-Index] No chunks to index for session: ${sessionId}`);
       return { chunksIndexed: 0 };
     }
 
     // Embed all chunks in batches of 20
     console.log(
-      `Embedding ${allChunks.length} chunks for session: ${sessionId}`,
+      `[RAG-Index] Embedding ${allChunks.length} chunks for session: ${sessionId}`,
     );
     const vectors = [];
     const batchSize = 20;
@@ -136,7 +142,14 @@ export const ragIndexingService = {
     for (let i = 0; i < allChunks.length; i += batchSize) {
       const batch = allChunks.slice(i, i + batchSize);
       const texts = batch.map((c) => c.text);
-      const embeddings = await embeddingService.embedBatch(texts);
+
+      let embeddings;
+      try {
+        embeddings = await embeddingService.embedBatch(texts);
+      } catch (error) {
+        console.error(`[RAG-Index] Embedding failed for batch ${i / batchSize + 1}:`, error.message);
+        throw new Error(`Failed to generate embeddings for session ${sessionId}`);
+      }
 
       batch.forEach((chunk, j) => {
         vectors.push({
@@ -152,18 +165,23 @@ export const ragIndexingService = {
 
     // Upsert to Pinecone
     console.log(
-      `Upserting ${vectors.length} vectors to Pinecone namespace: ${userId}`,
+      `[RAG-Index] Upserting ${vectors.length} vectors to Pinecone namespace: ${userId}`,
     );
 
     // Pinecone upsert in batches of 100
     const upsertBatchSize = 100;
     for (let i = 0; i < vectors.length; i += upsertBatchSize) {
       const batch = vectors.slice(i, i + upsertBatchSize);
-      await namespace.upsert({ records: batch });
+      try {
+        await namespace.upsert({ records: batch });
+      } catch (error) {
+        console.error(`[RAG-Index] Pinecone upsert failed for batch ${i / upsertBatchSize + 1}:`, error.message);
+        throw new Error(`Failed to index session ${sessionId} in knowledge base`);
+      }
     }
 
     console.log(
-      `Indexing complete for session: ${sessionId} — ${vectors.length} chunks`,
+      `[RAG-Index] Indexing complete for session: ${sessionId} — ${vectors.length} chunks`,
     );
     return { chunksIndexed: vectors.length };
   },

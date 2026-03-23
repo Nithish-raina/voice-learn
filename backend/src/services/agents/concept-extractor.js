@@ -28,5 +28,10 @@ Return this exact JSON structure:
   "clarityNotes": "brief note on overall clarity and structure of the explanation"
 }`;
 
-  return callFastLLM({ system, prompt });
+  try {
+    return await callFastLLM({ system, prompt });
+  } catch (error) {
+    console.error("[ConceptExtractor] Failed:", error.message);
+    throw new Error("Failed to extract concepts from your explanation.");
+  }
 }

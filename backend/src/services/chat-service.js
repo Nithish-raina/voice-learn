@@ -169,12 +169,16 @@ When answering:
         if (title && title.length > 50) title = title.substring(0, 50).trim();
         if (!title || title.length < 2) title = content.substring(0, 40);
         await chatRepository.updateConversationTitle(conversationId, title);
-      } catch {
-        // Fallback to user message on title generation errors
-        await chatRepository.updateConversationTitle(
-          conversationId,
-          content.substring(0, 40),
-        );
+      } catch (error) {
+        console.error("[Chat] Title generation failed:", error.message);
+        try {
+          await chatRepository.updateConversationTitle(
+            conversationId,
+            content.substring(0, 40),
+          );
+        } catch (updateError) {
+          console.error("[Chat] Failed to set fallback title:", updateError.message);
+        }
       }
     }
 

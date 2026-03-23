@@ -19,3 +19,7 @@ export const ragQueue = new Queue("rag-indexing", {
     },
   },
 });
+
+ragQueue.on("error", (err) => {
+  console.error("[Queue] RAG queue error:", err.message);
+});
