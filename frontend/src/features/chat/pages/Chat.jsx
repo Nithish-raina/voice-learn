@@ -8,7 +8,8 @@ import MessageBubble from "../components/MessageBubble";
 import ChatInput from "../components/ChatInput";
 import SuggestedPrompts from "../components/SuggestedPrompts";
 import EmptyChat from "../components/EmptyChat";
-import LoadingSpinner from "../../../shared/components/LoadingSpinner";
+import ChatSkeleton, { MessagesSkeleton } from "../components/ChatSkeleton";
+import Skeleton from "../../../shared/components/Skeleton";
 import { useIsMobile } from "../../../shared/hooks/useIsMobile";
 import { Menu, X } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
@@ -19,6 +20,11 @@ export default function Chat() {
     loading: convsLoading,
     refetch: refetchConvs,
   } = useConversations();
+  const [initialLoad, setInitialLoad] = useState(true);
+
+  useEffect(() => {
+    if (!convsLoading && initialLoad) setInitialLoad(false);
+  }, [convsLoading]);
   const { mutate: createConv } = useCreateConversation();
   const { send, sending } = useSendMessage();
   const isMobile = useIsMobile();
@@ -101,7 +107,7 @@ export default function Chat() {
 
   const conversations = convData?.conversations || [];
 
-  if (convsLoading) return <LoadingSpinner />;
+  if (convsLoading && initialLoad) return <ChatSkeleton />;
 
   return (
     <div style={{ display: "flex", height: isMobile ? "calc(100vh - 112px)" : "100%", position: "relative" }}>
@@ -224,7 +230,7 @@ export default function Chat() {
         {!activeConvId ? (
           <EmptyChat onCreate={handleCreateConversation} />
         ) : msgsLoading ? (
-          <LoadingSpinner message="Loading messages..." />
+          <Skeleton><MessagesSkeleton /></Skeleton>
         ) : messages.length === 0 ? (
           <SuggestedPrompts onSelect={handleSendMessage} />
         ) : (

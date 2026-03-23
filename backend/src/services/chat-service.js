@@ -157,17 +157,24 @@ When answering:
       try {
         const titleResponse = await callLLM({
           system:
-            "Generate a short 3-5 word title for this conversation. Return only the title text, nothing else.",
-          prompt: content,
-          maxTokens: 20,
+            "Your ONLY job is to output a short title (3-5 words) for a chat conversation. Do NOT answer the question. Do NOT explain anything. Output ONLY the title words.",
+          prompt: `Create a 3-5 word title for this chat message:\n"${content}"\n\nTitle:`,
+          maxTokens: 15,
         });
-        const title =
+        let title =
           typeof titleResponse === "string"
-            ? titleResponse.replace(/"/g, "")
-            : content.substring(0, 40);
+            ? titleResponse.replace(/^["'\s]+|["'\s]+$/g, "").trim()
+            : null;
+        // Truncate to max 50 chars and ensure it's reasonable
+        if (title && title.length > 50) title = title.substring(0, 50).trim();
+        if (!title || title.length < 2) title = content.substring(0, 40);
         await chatRepository.updateConversationTitle(conversationId, title);
       } catch {
-        // Ignore title generation errors
+        // Fallback to user message on title generation errors
+        await chatRepository.updateConversationTitle(
+          conversationId,
+          content.substring(0, 40),
+        );
       }
     }
 
