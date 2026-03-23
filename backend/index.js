@@ -15,7 +15,20 @@ const currentDir = path.dirname(new URL(import.meta.url).pathname);
 
 app.use(
   cors({
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: function (origin, callback) {
+      const allowed = [
+        process.env.CLIENT_URL,
+        "http://localhost:5173",
+        "http://localhost:3000",
+      ].filter(Boolean);
+
+      // Allow requests with no origin (mobile apps, Postman, server-to-server)
+      if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   }),
 );
