@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   Home,
   BookOpen,
+  MessageSquare,
   Layers,
   BarChart3,
   Mic,
@@ -12,6 +13,7 @@ const navItems = [
   { to: "/dashboard", icon: Home, label: "Home" },
   { to: "/library", icon: BookOpen, label: "Library" },
   { to: "/record", icon: Mic, label: "Record", isCta: true },
+  { to: "/chat", icon: MessageSquare, label: "Chat" },
   { to: "/flashcards", icon: Layers, label: "Cards" },
   { to: "/insights", icon: BarChart3, label: "Insights" },
 ];
