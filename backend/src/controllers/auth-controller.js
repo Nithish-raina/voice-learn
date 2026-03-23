@@ -92,7 +92,7 @@ export const authController = {
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
       });
 
@@ -114,7 +114,7 @@ export const authController = {
       res.clearCookie("refreshToken", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "none",
         path: "/",
       });
 
@@ -136,7 +136,7 @@ export const authController = {
       res.cookie("csrfToken", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        sameSite: "none",
         maxAge: CSRF_TTL * 1000,
         path: "/",
       });
