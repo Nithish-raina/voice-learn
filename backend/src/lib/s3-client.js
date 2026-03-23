@@ -25,6 +25,7 @@ export async function generatePresignedUploadUrl(userId, sessionId) {
 
     return { url, key };
   } catch (error) {
-    throw new Error(`Failed to generate upload URL: ${error.message}`);
+    console.error("[S3] Failed to generate presigned URL:", error.message);
+    throw new Error("Unable to prepare audio upload. Please try again.");
   }
 }

@@ -214,7 +214,12 @@ export const authService = {
 
   async generateCsrfToken() {
     const token = crypto.randomBytes(32).toString("hex");
-    await redis.set(csrfKey(token), "1", "EX", CSRF_TTL);
+    try {
+      await redis.set(csrfKey(token), "1", "EX", CSRF_TTL);
+    } catch (error) {
+      console.error("[Auth] Failed to store CSRF token:", error.message);
+      throw new AppError("Unable to complete the request. Please try again.", 500, "CSRF_STORE_FAILED");
+    }
     return token;
   },
 };

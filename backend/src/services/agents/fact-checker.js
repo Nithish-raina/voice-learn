@@ -22,5 +22,10 @@ Return this exact JSON structure:
   "inaccuracies": ["list of specific incorrect claims, empty if all correct"]
 }`;
 
-  return callFastLLM({ system, prompt });
+  try {
+    return await callFastLLM({ system, prompt });
+  } catch (error) {
+    console.error("[FactChecker] Failed:", error.message);
+    throw new Error("Failed to verify the accuracy of your explanation.");
+  }
 }

@@ -36,5 +36,10 @@ Return this exact JSON structure:
   "gaps": "2-3 sentence summary of what they missed or got wrong"
 }`;
 
-  return callLLM({ system, prompt, maxTokens: 500 });
+  try {
+    return await callLLM({ system, prompt, maxTokens: 500 });
+  } catch (error) {
+    console.error("[Scorer] Failed:", error.message);
+    throw new Error("Failed to generate your score.");
+  }
 }

@@ -1,7 +1,8 @@
-// service for handling business logic related to rate limiting
+// service for handling speech-to-text via Deepgram WebSocket
 import WebSocket from "ws";
 
 const DEEPGRAM_URL = "wss://api.deepgram.com/v1/listen";
+const CONNECTION_TIMEOUT_MS = 10000;
 
 export function createDeepgramStream(options = {}) {
   const {
@@ -11,6 +12,20 @@ export function createDeepgramStream(options = {}) {
     onOpen,
     sampleRate = 16000,
   } = options;
+
+  if (!process.env.DEEPGRAM_API_KEY) {
+    const error = new Error("Deepgram API key is not configured");
+    console.error("[STT]", error.message);
+    if (onError) onError(error);
+    // Return a no-op stream so callers don't crash
+    return {
+      sendAudio() {},
+      close() {},
+      closeAndWait() { return Promise.resolve(); },
+      getTranscript() { return ""; },
+      isConnected() { return false; },
+    };
+  }
 
   const params = new URLSearchParams({
     model: "nova-2",
@@ -23,26 +38,55 @@ export function createDeepgramStream(options = {}) {
     endpointing: "500",
   });
 
-  const dgWs = new WebSocket(`${DEEPGRAM_URL}?${params.toString()}`, {
-    headers: {
-      Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
-    },
-  });
+  let dgWs;
+  try {
+    dgWs = new WebSocket(`${DEEPGRAM_URL}?${params.toString()}`, {
+      headers: {
+        Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
+      },
+    });
+  } catch (error) {
+    console.error("[STT] Failed to create Deepgram WebSocket:", error.message);
+    if (onError) onError(error);
+    return {
+      sendAudio() {},
+      close() {},
+      closeAndWait() { return Promise.resolve(); },
+      getTranscript() { return ""; },
+      isConnected() { return false; },
+    };
+  }
 
   let fullTranscript = "";
   let lastInterim = "";
   let isOpen = false;
+  let connectionTimedOut = false;
+
+  // Timeout if Deepgram doesn't connect within threshold
+  const connectionTimer = setTimeout(() => {
+    if (!isOpen) {
+      connectionTimedOut = true;
+      console.error("[STT] Deepgram connection timed out");
+      const error = new Error("Speech-to-text service connection timed out");
+      if (onError) onError(error);
+      try {
+        dgWs.close();
+      } catch (e) {
+        console.error("[STT] Error closing timed-out connection:", e.message);
+      }
+    }
+  }, CONNECTION_TIMEOUT_MS);
 
   dgWs.on("open", () => {
+    clearTimeout(connectionTimer);
     isOpen = true;
-    console.log("Deepgram stream opened");
+    console.log("[STT] Deepgram stream opened");
     if (onOpen) onOpen();
   });
 
   dgWs.on("message", (data) => {
     try {
       const response = JSON.parse(data.toString());
-      // console.log("Deepgram msg:", JSON.stringify(response));
 
       if (response.type === "Results") {
         const transcript = response.channel?.alternatives?.[0]?.transcript;
@@ -51,7 +95,7 @@ export function createDeepgramStream(options = {}) {
 
           if (isFinal) {
             fullTranscript += (fullTranscript ? " " : "") + transcript.trim();
-            lastInterim = ""; // reset because it's committed
+            lastInterim = "";
           } else {
             lastInterim = transcript.trim();
           }
@@ -66,22 +110,39 @@ export function createDeepgramStream(options = {}) {
             });
           }
         }
+      } else if (response.type === "Error") {
+        console.error("[STT] Deepgram returned error:", response.description || response.message);
+        if (onError) onError(new Error(response.description || "Speech-to-text service error"));
       }
     } catch (error) {
-      console.error("Deepgram message parse error:", error);
+      console.error("[STT] Failed to parse Deepgram message:", error.message);
     }
   });
 
   dgWs.on("error", (error) => {
-    console.error("Deepgram stream error:", error.message);
+    clearTimeout(connectionTimer);
+    console.error("[STT] Deepgram stream error:", error.message);
     if (onError) onError(error);
+  });
+
+  dgWs.on("unexpected-response", (req, res) => {
+    clearTimeout(connectionTimer);
+    const statusCode = res.statusCode;
+    console.error(`[STT] Deepgram unexpected response: HTTP ${statusCode}`);
+    let errorMsg = "Speech-to-text service is unavailable";
+    if (statusCode === 401 || statusCode === 403) {
+      errorMsg = "Speech-to-text service authentication failed";
+    }
+    if (onError) onError(new Error(errorMsg));
   });
 
   let closeResolve = null;
 
   dgWs.on("close", (code, reason) => {
+    clearTimeout(connectionTimer);
     isOpen = false;
-    console.log("Deepgram stream closed:", code, reason.toString());
+    const reasonStr = reason ? reason.toString() : "";
+    console.log(`[STT] Deepgram stream closed: code=${code} reason=${reasonStr}`);
     if (closeResolve) closeResolve();
     if (onClose) onClose();
   });
@@ -89,13 +150,21 @@ export function createDeepgramStream(options = {}) {
   return {
     sendAudio(chunk) {
       if (isOpen && dgWs.readyState === WebSocket.OPEN) {
-        dgWs.send(chunk);
+        try {
+          dgWs.send(chunk);
+        } catch (error) {
+          console.error("[STT] Failed to send audio chunk:", error.message);
+        }
       }
     },
 
     close() {
       if (isOpen && dgWs.readyState === WebSocket.OPEN) {
-        dgWs.send(JSON.stringify({ type: "CloseStream" }));
+        try {
+          dgWs.send(JSON.stringify({ type: "CloseStream" }));
+        } catch (error) {
+          console.error("[STT] Failed to send close command:", error.message);
+        }
       }
     },
 
@@ -107,7 +176,13 @@ export function createDeepgramStream(options = {}) {
           return;
         }
         closeResolve = resolve;
-        dgWs.send(JSON.stringify({ type: "CloseStream" }));
+        try {
+          dgWs.send(JSON.stringify({ type: "CloseStream" }));
+        } catch (error) {
+          console.error("[STT] Failed to send close command:", error.message);
+          resolve();
+          return;
+        }
         // Safety timeout in case Deepgram never closes
         setTimeout(resolve, timeoutMs);
       });

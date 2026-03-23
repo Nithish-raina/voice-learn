@@ -6,6 +6,7 @@ import sessionRouter from "./session-router.js";
 import dashboardRouter from "./dashboard-router.js";
 import flashcardRouter from "./flashcard-router.js";
 import insightRouter from "./insights-router.js";
+import chatRouter from "./chat-router.js";
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use("/sessions", sessionRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/flashcards", flashcardRouter);
 router.use("/insights", insightRouter);
+router.use("/chat", chatRouter);
 
 export default router;

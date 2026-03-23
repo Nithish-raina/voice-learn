@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
-    "start": "node index.js"
+    "start": "node index.js",
+    "worker": "nodemon worker.js",
+    "worker:prod": "node worker.js"
   },
   "author": "",
   "license": "ISC",

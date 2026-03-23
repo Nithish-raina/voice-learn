@@ -3,26 +3,53 @@ import { redis } from "../lib/redis-client.js";
 
 export const cacheRepository = {
   async get(key) {
-    return redis.get(key);
+    try {
+      return await redis.get(key);
+    } catch (error) {
+      console.error(`[Cache] Failed to get key "${key}":`, error.message);
+      return null;
+    }
   },
 
   async set(key, value) {
-    return redis.set(key, value);
+    try {
+      return await redis.set(key, value);
+    } catch (error) {
+      console.error(`[Cache] Failed to set key "${key}":`, error.message);
+    }
   },
 
   async setWithTTL(key, value, ttlSeconds) {
-    return redis.set(key, value, "EX", ttlSeconds);
+    try {
+      return await redis.set(key, value, "EX", ttlSeconds);
+    } catch (error) {
+      console.error(`[Cache] Failed to set key "${key}" with TTL:`, error.message);
+    }
   },
 
   async incrby(key, amount) {
-    return redis.incrby(key, amount);
+    try {
+      return await redis.incrby(key, amount);
+    } catch (error) {
+      console.error(`[Cache] Failed to increment key "${key}":`, error.message);
+      return null;
+    }
   },
 
   async delete(key) {
-    return redis.del(key);
+    try {
+      return await redis.del(key);
+    } catch (error) {
+      console.error(`[Cache] Failed to delete key "${key}":`, error.message);
+    }
   },
 
   async getTTL(key) {
-    return redis.ttl(key);
+    try {
+      return await redis.ttl(key);
+    } catch (error) {
+      console.error(`[Cache] Failed to get TTL for key "${key}":`, error.message);
+      return -1;
+    }
   },
 };

@@ -22,5 +22,10 @@ Return this exact JSON structure:
   "depthAssessment": "brief assessment of how deep vs surface-level the explanation was"
 }`;
 
-  return callFastLLM({ system, prompt });
+  try {
+    return await callFastLLM({ system, prompt });
+  } catch (error) {
+    console.error("[CompletenessChecker] Failed:", error.message);
+    throw new Error("Failed to evaluate the completeness of your explanation.");
+  }
 }
