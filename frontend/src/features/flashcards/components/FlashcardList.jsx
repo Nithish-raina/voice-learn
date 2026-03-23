@@ -33,21 +33,37 @@ export default function FlashcardList({ flashcards, onReview }) {
               Q
             </span>
           </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 13, fontWeight: 500 }}>{f.question}</p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {f.question}
+            </p>
             <div
               style={{
                 display: "flex",
                 gap: 8,
                 alignItems: "center",
                 marginTop: 4,
+                overflow: "hidden",
               }}
             >
               <Pill>{f.sourceTopic}</Pill>
-              <span style={{ fontSize: 11, color: C.textDim }}>
-                {f.intervalDays === 1 && f.reviewCount === 0
-                  ? "First review"
-                  : `${f.intervalDays} day interval`}
+              <span
+                style={{
+                  fontSize: 11,
+                  color: C.textDim,
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
+                }}
+              >
+                {f.intervalDays}d
               </span>
             </div>
           </div>
