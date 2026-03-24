@@ -6,9 +6,9 @@ export async function extractConcepts({
   subject,
   difficulty,
 }) {
-  const system = `You are a concept extractor. Analyze a student's spoken explanation and extract the main concepts they covered. Return ONLY valid JSON with no markdown formatting.`;
+  const system = `You are a concept extractor. Analyze a spoken explanation and extract the main concepts covered. Return ONLY valid JSON with no markdown formatting.`;
 
-  const prompt = `The student was explaining "${topic}" (subject: ${subject}, difficulty: ${difficulty}).
+  const prompt = `The speaker was explaining "${topic}" (subject: ${subject}, difficulty: ${difficulty}).
 
 Here is their transcript:
 "${transcript}"
@@ -20,7 +20,7 @@ Return this exact JSON structure:
   "concepts": [
     {
       "concept": "name of the concept",
-      "explanation": "what the student said about this concept",
+      "explanation": "what the speaker said about this concept",
       "analogy": "any analogy used, or null"
     }
   ],

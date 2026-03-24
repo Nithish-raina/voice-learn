@@ -7,9 +7,9 @@ export async function generateContent({
   topic,
   difficulty,
 }) {
-  const system = `You are a learning content generator. Create test questions and flashcards based on a student's knowledge gaps. Return ONLY valid JSON with no markdown formatting.`;
+  const system = `You are a learning content generator. Create test questions and flashcards based on knowledge gaps. Return ONLY valid JSON with no markdown formatting.`;
 
-  const prompt = `Based on this analysis of a student's explanation of "${topic}" at ${difficulty} level:
+  const prompt = `Based on this analysis of an explanation of "${topic}" at ${difficulty} level:
 
 Concepts covered:
 ${concepts.concepts.map((c) => c.concept).join(", ")}

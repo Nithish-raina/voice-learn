@@ -1,9 +1,9 @@
 import { callFastLLM } from "../../lib/llm-client.js";
 
 export async function checkCompleteness({ concepts, topic, difficulty }) {
-  const system = `You are a completeness evaluator. Given a topic and difficulty level, identify important concepts that the student did NOT cover. Return ONLY valid JSON with no markdown formatting.`;
+  const system = `You are a completeness evaluator. Given a topic and difficulty level, identify important concepts that were NOT covered. Return ONLY valid JSON with no markdown formatting.`;
 
-  const prompt = `The student was explaining "${topic}" at ${difficulty} level.
+  const prompt = `The speaker was explaining "${topic}" at ${difficulty} level.
 
 They covered these concepts:
 ${concepts.concepts.map((c) => c.concept).join(", ")}
