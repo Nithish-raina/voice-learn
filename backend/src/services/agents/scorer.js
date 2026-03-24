@@ -7,9 +7,9 @@ export async function generateScore({
   topic,
   difficulty,
 }) {
-  const system = `You are a learning evaluator. Score a student's explanation and provide feedback. Return ONLY valid JSON with no markdown formatting.`;
+  const system = `You are a learning evaluator. Score an explanation and provide feedback. Return ONLY valid JSON with no markdown formatting. Never use the word "student" in your output — refer to the speaker as "you" instead.`;
 
-  const prompt = `Evaluate this student's explanation of "${topic}" at ${difficulty} level.
+  const prompt = `Evaluate this explanation of "${topic}" at ${difficulty} level.
 
 Concepts they covered:
 ${JSON.stringify(concepts.concepts, null, 2)}

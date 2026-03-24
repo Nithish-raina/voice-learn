@@ -1,9 +1,9 @@
 import { callFastLLM } from "../../lib/llm-client.js";
 
 export async function checkFacts({ concepts, topic, difficulty }) {
-  const system = `You are a fact checker. Evaluate whether a student's explanations of concepts are accurate. Return ONLY valid JSON with no markdown formatting.`;
+  const system = `You are a fact checker. Evaluate whether the explanations of concepts are accurate. Return ONLY valid JSON with no markdown formatting.`;
 
-  const prompt = `The student was explaining "${topic}" at ${difficulty} level.
+  const prompt = `The speaker was explaining "${topic}" at ${difficulty} level.
 
 Here are the concepts they covered:
 ${JSON.stringify(concepts.concepts, null, 2)}
