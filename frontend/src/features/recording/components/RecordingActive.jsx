@@ -1,18 +1,53 @@
 import { useState, useEffect, useRef } from "react";
 import { C } from "../../../shared/styles/colors";
 
-export default function RecordingActive({ topic, onStop }) {
+export default function RecordingActive({ topic, maxSeconds, onStop }) {
   const [seconds, setSeconds] = useState(0);
   const [bars, setBars] = useState(Array(40).fill(4));
-  const timerRef = useRef(null);
+  const [autoStopped, setAutoStopped] = useState(false);
+  const stoppedRef = useRef(false);
+  const timerIdRef = useRef(null);
+  const barsIdRef = useRef(null);
+  const stopTimeoutRef = useRef(null);
 
+  function clearAllTimers() {
+    clearInterval(timerIdRef.current);
+    clearInterval(barsIdRef.current);
+    clearTimeout(stopTimeoutRef.current);
+  }
+
+  // 1-second timer for elapsed time and auto-stop
   useEffect(() => {
-    timerRef.current = setInterval(() => {
-      setSeconds((s) => s + 1);
+    timerIdRef.current = setInterval(() => {
+      setSeconds((s) => {
+        const next = s + 1;
+        if (maxSeconds && next >= maxSeconds && !stoppedRef.current) {
+          stoppedRef.current = true;
+          setAutoStopped(true);
+          clearAllTimers();
+          stopTimeoutRef.current = setTimeout(() => onStop(), 2500);
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(timerIdRef.current);
+  }, [maxSeconds, onStop]);
+
+  // Fast animation for audio bars
+  useEffect(() => {
+    barsIdRef.current = setInterval(() => {
       setBars(Array.from({ length: 40 }, () => 4 + Math.random() * 30));
     }, 200);
-    return () => clearInterval(timerRef.current);
+    return () => clearInterval(barsIdRef.current);
   }, []);
+
+  // Clean up everything on unmount
+  useEffect(() => {
+    return () => clearAllTimers();
+  }, []);
+
+  const remaining = maxSeconds ? Math.max(0, maxSeconds - seconds) : null;
+  const nearLimit = remaining !== null && remaining <= 10;
 
   const fmt = (s) =>
     `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, "0")}`;
@@ -42,15 +77,50 @@ export default function RecordingActive({ topic, onStop }) {
           teaching someone new
         </p>
       </div>
+
+      {autoStopped && (
+        <div
+          style={{
+            padding: "10px 20px",
+            borderRadius: 10,
+            background: "#fef3c7",
+            border: "1px solid #f59e0b",
+            maxWidth: 400,
+            textAlign: "center",
+          }}
+        >
+          <p style={{ fontSize: 13, color: "#92400e", margin: 0 }}>
+            Time limit reached — submitting your recording for evaluation.
+          </p>
+        </div>
+      )}
+
       <div
         style={{
           fontSize: 40,
           fontWeight: 700,
           fontVariantNumeric: "tabular-nums",
+          color: nearLimit ? "#ef4444" : undefined,
         }}
       >
         {fmt(seconds)}
       </div>
+
+      {remaining !== null && !autoStopped && (
+        <p
+          style={{
+            fontSize: 12,
+            color: nearLimit ? "#ef4444" : C.textDim,
+            fontWeight: nearLimit ? 600 : 400,
+            margin: 0,
+          }}
+        >
+          {remaining > 0
+            ? `${fmt(remaining)} remaining`
+            : "Time's up!"}
+        </p>
+      )}
+
       <div
         style={{
           display: "flex",
@@ -69,7 +139,7 @@ export default function RecordingActive({ topic, onStop }) {
               width: 4,
               height: h,
               borderRadius: 2,
-              background: C.primary,
+              background: nearLimit ? "#ef4444" : C.primary,
               opacity: 0.4 + Math.random() * 0.6,
               transition: "height 0.12s",
             }}
@@ -81,13 +151,14 @@ export default function RecordingActive({ topic, onStop }) {
       </p>
       <button
         onClick={onStop}
+        disabled={autoStopped}
         style={{
           width: 56,
           height: 56,
           borderRadius: "50%",
-          background: "#ef4444",
+          background: autoStopped ? "#9ca3af" : "#ef4444",
           border: "none",
-          cursor: "pointer",
+          cursor: autoStopped ? "default" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

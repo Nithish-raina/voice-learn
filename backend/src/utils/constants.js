@@ -1,5 +1,5 @@
 export const RATE_LIMITS = {
-  maxSessionSeconds: 600,
+  maxSessionSeconds: 300,
   maxDailySeconds: 1800,
 };
 
@@ -30,7 +30,7 @@ export const CSRF_TTL = 24 * 60 * 60; // 1 day in seconds
 
 export const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
+  secure: true,
   sameSite: "none",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   path: "/",
