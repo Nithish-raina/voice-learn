@@ -1,6 +1,7 @@
 // flashcard service for handling business logic related to flashcards
 import { flashcardRepository } from "../repositories/flashcard-repository.js";
 import { AppError } from "../utils/errors.js";
+import logger from "../lib/logger.js";
 
 // SM-2 Spaced Repetition Algorithm
 function applySM2(flashcard, rating) {
@@ -68,6 +69,7 @@ export const flashcardService = {
     page = parseInt(page) || 1;
     limit = Math.min(parseInt(limit) || 20, 50);
 
+    logger.debug({ userId, due, sessionId, status, page, limit }, "Listing flashcards");
     const { flashcards, totalItems } = await flashcardRepository.findByUserId(
       userId,
       {
@@ -106,6 +108,7 @@ export const flashcardService = {
   },
 
   async getStats(userId) {
+    logger.debug({ userId }, "Fetching flashcard stats");
     const [dueTodayResult, upcomingResult, masteredResult, totalResult] =
       await Promise.allSettled([
         flashcardRepository.countDue(userId),
@@ -144,6 +147,7 @@ export const flashcardService = {
       );
     }
 
+    logger.info({ userId, flashcardId, rating }, "Reviewing flashcard");
     const flashcard = await flashcardRepository.findById(flashcardId);
 
     if (!flashcard) {
@@ -151,6 +155,7 @@ export const flashcardService = {
     }
 
     if (flashcard.userId !== userId) {
+      logger.warn({ userId, flashcardId, ownerId: flashcard.userId }, "Forbidden flashcard access attempt");
       throw new AppError(
         "You do not have access to this flashcard",
         403,
@@ -167,6 +172,7 @@ export const flashcardService = {
     }
 
     const updates = applySM2(flashcard, rating);
+    logger.debug({ flashcardId, intervalDays: updates.intervalDays, easeFactor: updates.easeFactor }, "SM2 calculation done");
 
     const updated = await flashcardRepository.update(flashcardId, updates);
 

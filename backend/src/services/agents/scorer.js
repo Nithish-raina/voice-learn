@@ -1,4 +1,5 @@
 import { callLLM } from "../../lib/llm-client.js";
+import logger from "../../lib/logger.js";
 
 export async function generateScore({
   concepts,
@@ -39,7 +40,7 @@ Return this exact JSON structure:
   try {
     return await callLLM({ system, prompt, maxTokens: 500 });
   } catch (error) {
-    console.error("[Scorer] Failed:", error.message);
+    logger.error({ err: error }, "Scoring failed");
     throw new Error("Failed to generate your score.");
   }
 }

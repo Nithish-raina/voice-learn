@@ -1,4 +1,5 @@
 import { callFastLLM } from "../../lib/llm-client.js";
+import logger from "../../lib/logger.js";
 
 export async function extractConcepts({
   transcript,
@@ -31,7 +32,7 @@ Return this exact JSON structure:
   try {
     return await callFastLLM({ system, prompt });
   } catch (error) {
-    console.error("[ConceptExtractor] Failed:", error.message);
+    logger.error({ err: error }, "Concept extraction failed");
     throw new Error("Failed to extract concepts from your explanation.");
   }
 }

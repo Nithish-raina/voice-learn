@@ -2,6 +2,7 @@
 import { cacheRepository } from "../repositories/cache-repository.js";
 import { RATE_LIMITS } from "../utils/constants.js";
 import { AppError } from "../utils/errors.js";
+import logger from "../lib/logger.js";
 
 function getSecondsUntilMidnight() {
   const now = new Date();
@@ -17,6 +18,7 @@ export const rateLimitService = {
     const usedSeconds = parseInt(used) || 0;
     const remaining = Math.max(0, RATE_LIMITS.maxDailySeconds - usedSeconds);
 
+    logger.debug({ userId, usedSeconds, remaining }, "Usage retrieved");
     return {
       dailyLimitSeconds: RATE_LIMITS.maxDailySeconds,
       dailyUsedSeconds: usedSeconds,
@@ -30,11 +32,7 @@ export const rateLimitService = {
     const usage = await this.getUsage(userId);
 
     if (!usage.canRecord) {
-      const ttl = getSecondsUntilMidnight();
-      const now = new Date();
-      const resetsAt = new Date(now);
-      resetsAt.setHours(24, 0, 0, 0);
-
+      logger.warn({ userId, usedSeconds: usage.dailyUsedSeconds }, "Daily recording limit reached");
       throw new AppError(
         "You have used your daily recording limit. Resets at midnight.",
         429,
@@ -48,6 +46,7 @@ export const rateLimitService = {
     );
 
     if (maxRecordingSeconds <= 0) {
+      logger.warn({ userId }, "Insufficient recording time remaining");
       throw new AppError(
         "Not enough recording time remaining. Resets at midnight.",
         429,
@@ -68,5 +67,6 @@ export const rateLimitService = {
     } else {
       await cacheRepository.incrby(key, durationSeconds);
     }
+    logger.info({ userId, durationSeconds }, "Usage recorded");
   },
 };

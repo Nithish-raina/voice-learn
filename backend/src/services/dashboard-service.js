@@ -1,5 +1,6 @@
 import { sessionRepository } from "../repositories/session-repository.js";
 import { flashcardRepository } from "../repositories/flashcard-repository.js";
+import logger from "../lib/logger.js";
 
 function calculateStreak(dates) {
   if (dates.length === 0) return { current: 0, longest: 0 };
@@ -86,6 +87,7 @@ function buildHeatmap(sessions, days) {
 
 export const dashboardService = {
   async getDashboard(userId) {
+    logger.debug({ userId }, "Building dashboard data");
     const [
       recentSessionsResult,
       sessionDatesResult,

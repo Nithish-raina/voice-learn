@@ -5,8 +5,10 @@ import { sessionRepository } from "../repositories/session-repository.js";
 import { SESSION_STATUS } from "../utils/constants.js";
 import { s3 } from "../lib/s3-client.js";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
+import logger from "../lib/logger.js";
 
 export function sessionHandler(ws, { sessionId, userId, session }) {
+  const log = logger.child({ sessionId });
   let deepgram = null;
   let recordingStartTime = Date.now();
   let isStopped = false;
@@ -36,7 +38,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
     deepgram = createDeepgramStream({
       sampleRate,
       onOpen() {
-        console.log(`[Session:${sessionId}] Deepgram ready, flushing ${pendingChunks.length} chunks`);
+        log.info({ pendingChunks: pendingChunks.length }, "Deepgram ready, flushing chunks");
         for (const chunk of pendingChunks) {
           if (deepgram.isConnected()) {
             deepgram.sendAudio(chunk);
@@ -55,17 +57,16 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
         }
       },
       onError(error) {
-        console.error(`[Session:${sessionId}] Deepgram error:`, error.message);
+        log.error({ err: error }, "Deepgram error");
         sendError("STT_ERROR", "Speech recognition encountered an issue. Your recording is still being saved.");
       },
       onClose() {
-        console.log(`[Session:${sessionId}] Deepgram closed`);
+        log.info("Deepgram closed");
       },
     });
 
     if (!deepgram.isConnected() && pendingChunks.length === 0) {
-      // Deepgram is still connecting — that's normal, chunks will be flushed in onOpen
-      console.log(`[Session:${sessionId}] Deepgram connecting...`);
+      log.info("Deepgram connecting...");
     }
   }
 
@@ -92,24 +93,24 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       }
     } catch (e) {
       // Binary audio data that happens to contain "type" but isn't JSON — treat as audio
-      console.debug(`[Session:${sessionId}] Non-JSON message received, treating as audio`);
+      log.debug("Non-JSON message received, treating as audio");
     }
 
     if (isCommand) {
       try {
         if (message.type === "audio_config") {
           audioSampleRate = message.sampleRate || 16000;
-          console.log(`[Session:${sessionId}] Audio sample rate: ${audioSampleRate}Hz`);
+          log.info({ sampleRate: audioSampleRate }, "Audio sample rate configured");
 
           // Now initialize Deepgram with the correct sample rate
           initDeepgram(audioSampleRate);
         } else if (message.type === "stop") {
-          console.log(`[Session:${sessionId}] Received stop command`);
+          log.info("Received stop command");
           isStopped = true;
           await handleStop();
         }
       } catch (error) {
-        console.error(`[Session:${sessionId}] Error handling command:`, error.message);
+        log.error({ err: error }, "Error handling command");
         sendError("COMMAND_ERROR", "Failed to process your request. Please try again.");
       }
       return;
@@ -117,9 +118,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
 
     // Binary data = audio chunk
     if (audioChunks.length % 50 === 0) {
-      console.log(
-        `[Session:${sessionId}] Received binary chunk ${audioChunks.length}, size: ${data.length} bytes`,
-      );
+      log.info({ chunkIndex: audioChunks.length, size: data.length }, "Received audio chunk");
     }
     audioChunks.push(Buffer.from(data));
     if (deepgram && deepgram.isConnected()) {
@@ -131,7 +130,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
 
   // Handle disconnect
   ws.on("close", async () => {
-    console.log(`[Session:${sessionId}] WebSocket disconnected`);
+    log.info("WebSocket disconnected");
 
     if (!isStopped && deepgram) {
       // User disconnected without stopping — cleanup
@@ -156,18 +155,18 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
             try {
               await rateLimitService.recordUsage(userId, durationSeconds);
             } catch (error) {
-              console.error(`[Session:${sessionId}] Failed to record usage on abandon:`, error.message);
+              log.error({ err: error }, "Failed to record usage on abandon");
             }
           }
         }
       } catch (error) {
-        console.error(`[Session:${sessionId}] Error handling abandoned session:`, error.message);
+        log.error({ err: error }, "Error handling abandoned session");
       }
     }
   });
 
   ws.on("error", (error) => {
-    console.error(`[Session:${sessionId}] WebSocket error:`, error.message);
+    log.error({ err: error }, "WebSocket error");
   });
 
   async function handleStop() {
@@ -183,16 +182,14 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       (Date.now() - recordingStartTime) / 1000,
     );
 
-    console.log(
-      `[Session:${sessionId}] Recording stopped: duration=${durationSeconds}s transcript=${transcript.length} chars`,
-    );
+    log.info({ durationSeconds, transcriptLength: transcript.length }, "Recording stopped");
 
     // Update rate limit
     if (durationSeconds > 0) {
       try {
         await rateLimitService.recordUsage(userId, durationSeconds);
       } catch (error) {
-        console.error(`[Session:${sessionId}] Failed to record usage:`, error.message);
+        log.error({ err: error }, "Failed to record usage");
         // Non-critical — continue processing
       }
     }
@@ -205,7 +202,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
           durationSeconds,
         });
       } catch (error) {
-        console.error(`[Session:${sessionId}] Failed to update session status:`, error.message);
+        log.error({ err: error }, "Failed to update session status");
       }
       sendError(
         "EMPTY_TRANSCRIPT",
@@ -235,9 +232,9 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
       await sessionRepository.update(sessionId, {
         audioUrl: `https://${bucket}.s3.${process.env.AWS_REGION}.amazonaws.com/${audioKey}`,
       });
-      console.log(`[Session:${sessionId}] Audio uploaded: ${audioKey}`);
+      log.info({ audioKey }, "Audio uploaded");
     } catch (error) {
-      console.error(`[Session:${sessionId}] Audio upload failed:`, error.message);
+      log.error({ err: error }, "Audio upload failed");
       // Don't fail the session — transcript and pipeline still work
     }
 
@@ -249,7 +246,7 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
         status: SESSION_STATUS.PROCESSING,
       });
     } catch (error) {
-      console.error(`[Session:${sessionId}] Failed to save transcript:`, error.message);
+      log.error({ err: error }, "Failed to save transcript");
       sendError("SAVE_FAILED", "Failed to save your recording. Please try again.");
       return;
     }
@@ -287,13 +284,13 @@ export function sessionHandler(ws, { sessionId, userId, session }) {
 
       sendStatus("complete");
     } catch (error) {
-      console.error(`[Session:${sessionId}] Agent pipeline failed:`, error.message);
+      log.error({ err: error }, "Agent pipeline failed");
       try {
         await sessionRepository.update(sessionId, {
           status: SESSION_STATUS.FAILED,
         });
       } catch (updateError) {
-        console.error(`[Session:${sessionId}] Failed to mark session as failed:`, updateError.message);
+        log.error({ err: updateError }, "Failed to mark session as failed");
       }
       sendError(
         "PIPELINE_FAILED",

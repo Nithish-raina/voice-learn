@@ -8,6 +8,7 @@ import { flashcardRepository } from "../../repositories/flashcard-repository.js"
 import { ragQueue } from "../../lib/queue-client.js";
 import { prisma } from "../../lib/prisma-client.js";
 import { SESSION_STATUS } from "../../utils/constants.js";
+import logger from "../../lib/logger.js";
 
 export async function runPipeline({
   transcript,
@@ -19,20 +20,19 @@ export async function runPipeline({
   onPartialResults,
   onStageComplete,
 }) {
-  console.log(`Pipeline started: session=${sessionId}`);
+  const log = logger.child({ sessionId });
+  log.info("Pipeline started");
   const startTime = Date.now();
 
   // Agent 1 — Concept Extraction (must run first)
-  console.log("Running Agent 1: Concept Extractor");
+  log.info("Running Agent 1: Concept Extractor");
   const concepts = await extractConcepts({
     transcript,
     topic,
     subject,
     difficulty,
   });
-  console.log(
-    `Agent 1 done: ${concepts.concepts?.length || 0} concepts extracted`,
-  );
+  log.info({ conceptCount: concepts.concepts?.length || 0 }, "Agent 1 done");
 
   if (onStageComplete) {
     onStageComplete({
@@ -42,15 +42,15 @@ export async function runPipeline({
   }
 
   // Agent 2A + 2B — Fact Check and Completeness Check (parallel)
-  console.log("Running Agent 2A + 2B in parallel");
+  log.info("Running Agent 2A + 2B in parallel");
   const [factCheck, completeness] = await Promise.all([
     checkFacts({ concepts, topic, difficulty }),
     checkCompleteness({ concepts, topic, difficulty }),
   ]);
-  console.log("Agent 2A + 2B done");
+  log.info("Agent 2A + 2B done");
 
   // Agent 3A + 3B — Scorer and Content Generator (parallel)
-  console.log("Running Agent 3A + 3B in parallel");
+  log.info("Running Agent 3A + 3B in parallel");
   const agentInputs = { concepts, factCheck, completeness, topic, difficulty };
 
   const [scoreResult, contentResult] = await Promise.all([
@@ -67,10 +67,10 @@ export async function runPipeline({
     }),
     generateContent(agentInputs),
   ]);
-  console.log("Agent 3A + 3B done");
+  log.info("Agent 3A + 3B done");
 
   const elapsed = Date.now() - startTime;
-  console.log(`Pipeline completed in ${elapsed}ms`);
+  log.info({ elapsedMs: elapsed }, "Pipeline completed");
 
   // Save everything to database in a transaction
   const savedData = await prisma.$transaction(async (tx) => {
@@ -128,9 +128,9 @@ export async function runPipeline({
   // Push RAG indexing job to queue
   try {
     await ragQueue.add("index_session", { sessionId });
-    console.log(`RAG indexing job queued for session: ${sessionId}`);
+    log.info("RAG indexing job queued");
   } catch (error) {
-    console.error("Failed to queue RAG job:", error.message);
+    log.error({ err: error }, "Failed to queue RAG job");
     // Don't fail the pipeline if queue push fails
   }
 

@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { AppError } from "../utils/errors.js";
+import logger from "./logger.js";
 
 export const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -11,6 +12,9 @@ export async function callLLM({
   prompt,
   maxTokens = 2000,
 }) {
+  const startTime = Date.now();
+  logger.debug({ model, maxTokens, promptLength: prompt?.length }, "LLM call started");
+
   let response;
   try {
     response = await anthropic.messages.create({
@@ -21,26 +25,31 @@ export async function callLLM({
     });
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
-      console.error("[LLM] Rate limit exceeded:", error.message);
+      logger.error({ err: error, model }, "LLM rate limit exceeded");
       throw new AppError("Service is temporarily busy. Please try again shortly.", 503, "LLM_RATE_LIMITED");
     }
     if (error instanceof Anthropic.AuthenticationError) {
-      console.error("[LLM] Authentication failed:", error.message);
+      logger.error({ err: error, model }, "LLM authentication failed");
       throw new AppError("Service configuration error. Please contact support.", 500, "LLM_AUTH_ERROR");
     }
     if (error instanceof Anthropic.APIConnectionError) {
-      console.error("[LLM] Connection failed:", error.message);
+      logger.error({ err: error, model }, "LLM connection failed");
       throw new AppError("Unable to reach analysis service. Please try again.", 503, "LLM_CONNECTION_ERROR");
     }
-    console.error("[LLM] API call failed:", error.message);
+    logger.error({ err: error, model }, "LLM API call failed");
     throw new AppError("Analysis service is currently unavailable. Please try again.", 503, "LLM_UNAVAILABLE");
   }
 
   const content = response.content?.[0];
   if (!content || !content.text) {
-    console.error("[LLM] Empty response received");
+    logger.error({ model }, "LLM empty response received");
     throw new AppError("Received an empty response from analysis service.", 502, "LLM_EMPTY_RESPONSE");
   }
+
+  const elapsed = Date.now() - startTime;
+  const inputTokens = response.usage?.input_tokens;
+  const outputTokens = response.usage?.output_tokens;
+  logger.info({ model, elapsedMs: elapsed, inputTokens, outputTokens, responseLength: content.text.length }, "LLM call completed");
 
   let text = content.text;
 

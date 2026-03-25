@@ -1,6 +1,7 @@
 // token repository for managing refresh tokens in Redis
 import crypto from "crypto";
 import { redis } from "../lib/redis-client.js";
+import logger from "../lib/logger.js";
 
 const REFRESH_TOKEN_TTL = 7 * 24 * 60 * 60; // 7 days in seconds
 
@@ -18,7 +19,7 @@ export const tokenRepository = {
       const hash = hashToken(token);
       await redis.set(tokenKey(userId, hash), "1", "EX", REFRESH_TOKEN_TTL);
     } catch (error) {
-      console.error("[TokenRepo] Failed to store refresh token:", error.message);
+      logger.error({ err: error }, "Failed to store refresh token");
       throw new Error("Unable to complete authentication. Please try again.");
     }
   },
@@ -29,7 +30,7 @@ export const tokenRepository = {
       const exists = await redis.exists(tokenKey(userId, hash));
       return exists === 1;
     } catch (error) {
-      console.error("[TokenRepo] Failed to verify refresh token:", error.message);
+      logger.error({ err: error }, "Failed to verify refresh token");
       return false;
     }
   },
@@ -39,7 +40,7 @@ export const tokenRepository = {
       const hash = hashToken(token);
       await redis.del(tokenKey(userId, hash));
     } catch (error) {
-      console.error("[TokenRepo] Failed to delete refresh token:", error.message);
+      logger.error({ err: error }, "Failed to delete refresh token");
     }
   },
 
@@ -51,7 +52,7 @@ export const tokenRepository = {
         await redis.del(...keys);
       }
     } catch (error) {
-      console.error("[TokenRepo] Failed to delete all refresh tokens:", error.message);
+      logger.error({ err: error }, "Failed to delete all refresh tokens");
     }
   },
 };

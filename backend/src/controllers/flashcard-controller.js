@@ -1,6 +1,7 @@
 // /api/v1/flashcard routes
 import { flashcardService } from "../services/flashcard-service.js";
 import { AppError } from "../utils/errors.js";
+import logger from "../lib/logger.js";
 
 export const flashcardController = {
   async list(req, res, next) {
@@ -10,6 +11,7 @@ export const flashcardController = {
       }
 
       const { due, sessionId, status, page, limit } = req.query;
+      logger.debug({ userId: req.userId, due, sessionId, status, page, limit }, "Flashcard list request");
 
       if (page) {
         const pageNum = parseInt(page);
@@ -54,6 +56,7 @@ export const flashcardController = {
         data: result,
       });
     } catch (error) {
+      logger.error({ userId: req.userId, err: error }, "Flashcard list failed");
       next(error);
     }
   },
@@ -64,6 +67,7 @@ export const flashcardController = {
         throw new AppError("Authentication required", 401, "UNAUTHORIZED");
       }
 
+      logger.debug({ userId: req.userId }, "Flashcard stats request");
       const stats = await flashcardService.getStats(req.userId);
 
       return res.status(200).json({
@@ -71,6 +75,7 @@ export const flashcardController = {
         data: stats,
       });
     } catch (error) {
+      logger.error({ userId: req.userId, err: error }, "Flashcard stats failed");
       next(error);
     }
   },
@@ -90,17 +95,22 @@ export const flashcardController = {
       }
 
       const { rating } = req.body;
+      const flashcardId = req.params.id;
+      logger.info({ userId: req.userId, flashcardId, rating }, "Flashcard review request");
+
       const result = await flashcardService.review(
         req.userId,
-        req.params.id,
+        flashcardId,
         rating,
       );
 
+      logger.info({ userId: req.userId, flashcardId, nextReviewAt: result.nextReviewAt, intervalDays: result.intervalDays }, "Flashcard reviewed");
       return res.status(200).json({
         status: "success",
         data: result,
       });
     } catch (error) {
+      logger.error({ userId: req.userId, flashcardId: req.params?.id, err: error }, "Flashcard review failed");
       next(error);
     }
   },

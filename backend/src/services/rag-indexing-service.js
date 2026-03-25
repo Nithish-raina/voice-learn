@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma-client.js";
 import { embeddingService } from "./embedding-service.js";
 import { pineconeIndex } from "../lib/pinecone-client.js";
+import logger from "../lib/logger.js";
 
 function chunkTranscript(transcript) {
   if (!transcript || transcript.trim().length === 0) return [];
@@ -37,6 +38,8 @@ function chunkTranscript(transcript) {
 
 export const ragIndexingService = {
   async indexSession(sessionId) {
+    const log = logger.child({ sessionId });
+
     // Fetch session with flashcards
     let session;
     try {
@@ -49,7 +52,7 @@ export const ragIndexingService = {
         },
       });
     } catch (error) {
-      console.error(`[RAG-Index] Database error fetching session ${sessionId}:`, error.message);
+      log.error({ err: error }, "Database error fetching session");
       throw new Error(`Failed to fetch session data for indexing`);
     }
 
@@ -128,14 +131,12 @@ export const ragIndexingService = {
     }
 
     if (allChunks.length === 0) {
-      console.log(`[RAG-Index] No chunks to index for session: ${sessionId}`);
+      log.info("No chunks to index");
       return { chunksIndexed: 0 };
     }
 
     // Embed all chunks in batches of 20
-    console.log(
-      `[RAG-Index] Embedding ${allChunks.length} chunks for session: ${sessionId}`,
-    );
+    log.info({ chunkCount: allChunks.length }, "Embedding chunks");
     const vectors = [];
     const batchSize = 20;
 
@@ -147,7 +148,7 @@ export const ragIndexingService = {
       try {
         embeddings = await embeddingService.embedBatch(texts);
       } catch (error) {
-        console.error(`[RAG-Index] Embedding failed for batch ${i / batchSize + 1}:`, error.message);
+        log.error({ err: error, batch: i / batchSize + 1 }, "Embedding failed for batch");
         throw new Error(`Failed to generate embeddings for session ${sessionId}`);
       }
 
@@ -164,9 +165,7 @@ export const ragIndexingService = {
     }
 
     // Upsert to Pinecone
-    console.log(
-      `[RAG-Index] Upserting ${vectors.length} vectors to Pinecone namespace: ${userId}`,
-    );
+    log.info({ vectorCount: vectors.length, namespace: userId }, "Upserting vectors to Pinecone");
 
     // Pinecone upsert in batches of 100
     const upsertBatchSize = 100;
@@ -175,14 +174,12 @@ export const ragIndexingService = {
       try {
         await namespace.upsert({ records: batch });
       } catch (error) {
-        console.error(`[RAG-Index] Pinecone upsert failed for batch ${i / upsertBatchSize + 1}:`, error.message);
+        log.error({ err: error, batch: i / upsertBatchSize + 1 }, "Pinecone upsert failed for batch");
         throw new Error(`Failed to index session ${sessionId} in knowledge base`);
       }
     }
 
-    console.log(
-      `[RAG-Index] Indexing complete for session: ${sessionId} — ${vectors.length} chunks`,
-    );
+    log.info({ chunksIndexed: vectors.length }, "Indexing complete");
     return { chunksIndexed: vectors.length };
   },
 };

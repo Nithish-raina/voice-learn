@@ -7,7 +7,9 @@ import swaggerUi from "swagger-ui-express";
 import YAML from "yamljs";
 import path from "path";
 import { errorHandler } from "./src/middlewares/error-handler.js";
+import { requestLogger } from "./src/middlewares/request-logger.js";
 import { setupWebSocket } from "./src/websocket/index.js";
+import logger from "./src/lib/logger.js";
 
 const app = express();
 
@@ -34,6 +36,7 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use(requestLogger);
 
 if (process.env.NODE_ENV !== "production") {
   const swaggerDocument = YAML.load(
@@ -68,6 +71,6 @@ setupWebSocket(server);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`WebSocket available at ws://localhost:${PORT}/ws`);
+  logger.info({ port: PORT }, "Server running");
+  logger.info({ port: PORT }, "WebSocket available");
 });

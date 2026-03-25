@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { userRepository } from "../repositories/user-repository.js";
 import { tokenRepository } from "../repositories/token-repository.js";
 import { hashPassword, comparePassword } from "../utils/password.js";
+import logger from "../lib/logger.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -217,7 +218,7 @@ export const authService = {
     try {
       await redis.set(csrfKey(token), "1", "EX", CSRF_TTL);
     } catch (error) {
-      console.error("[Auth] Failed to store CSRF token:", error.message);
+      logger.error({ err: error }, "Failed to store CSRF token");
       throw new AppError("Unable to complete the request. Please try again.", 500, "CSRF_STORE_FAILED");
     }
     return token;

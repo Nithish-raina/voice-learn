@@ -2,9 +2,11 @@
 import { sessionRepository } from "../repositories/session-repository.js";
 import { AppError } from "../utils/errors.js";
 import { SESSION_STATUS } from "../utils/constants.js";
+import logger from "../lib/logger.js";
 
 export const sessionService = {
   async create(userId, { topic, subject, difficulty }) {
+    logger.info({ userId, topic, subject, difficulty }, "Creating session");
     const session = await sessionRepository.create({
       userId,
       topic,
@@ -13,6 +15,7 @@ export const sessionService = {
       status: SESSION_STATUS.RECORDING,
     });
 
+    logger.info({ userId, sessionId: session.id }, "Session created in DB");
     return {
       sessionId: session.id,
       websocketUrl: `${process.env.WS_PROTOCOL || "ws"}://${process.env.WS_HOST || "localhost:3000"}/ws?sessionId=${session.id}`,
@@ -20,6 +23,7 @@ export const sessionService = {
   },
 
   async getById(userId, sessionId) {
+    logger.debug({ userId, sessionId }, "Fetching session by ID");
     const session = await sessionRepository.findById(sessionId);
 
     if (!session) {
@@ -27,6 +31,7 @@ export const sessionService = {
     }
 
     if (session.userId !== userId) {
+      logger.warn({ userId, sessionId, ownerId: session.userId }, "Forbidden session access attempt");
       throw new AppError(
         "You do not have access to this session",
         403,
@@ -64,6 +69,7 @@ export const sessionService = {
     page = Math.max(1, parseInt(page) || 1);
     limit = Math.max(1, Math.min(50, parseInt(limit) || 12));
 
+    logger.debug({ userId, subject, search, sort, page, limit }, "Listing sessions");
     const { sessions, totalItems } = await sessionRepository.findByUserId(
       userId,
       {
@@ -93,6 +99,7 @@ export const sessionService = {
         (topicMap[s.topic]?.attemptCount || 0) >= 2,
     }));
 
+    logger.debug({ userId, totalItems, returnedCount: enrichedSessions.length }, "Sessions listed");
     return {
       sessions: enrichedSessions,
       pagination: {
