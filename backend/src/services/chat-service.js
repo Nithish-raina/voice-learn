@@ -2,9 +2,18 @@ import { chatRepository } from "../repositories/chat-repository.js";
 import { ragService } from "./rag-service.js";
 import { callLLM } from "../lib/llm-client.js";
 import { AppError } from "../utils/errors.js";
+import { CHAT_LIMITS } from "../utils/constants.js";
 
 export const chatService = {
   async createConversation(userId) {
+    const count = await chatRepository.getConversationCount(userId);
+    if (count >= CHAT_LIMITS.maxConversationsPerUser) {
+      throw new AppError(
+        `You can have at most ${CHAT_LIMITS.maxConversationsPerUser} conversations. Please delete an existing one to start a new chat.`,
+        429,
+        "CONVERSATION_LIMIT_REACHED",
+      );
+    }
     return chatRepository.createConversation(userId);
   },
 
@@ -86,6 +95,16 @@ export const chatService = {
       );
     if (conversation.userId !== userId)
       throw new AppError("Forbidden", 403, "FORBIDDEN");
+
+    const userMessageCount =
+      await chatRepository.getUserMessageCount(conversationId);
+    if (userMessageCount >= CHAT_LIMITS.maxMessagesPerConversation) {
+      throw new AppError(
+        `This conversation has reached its limit of ${CHAT_LIMITS.maxMessagesPerConversation} messages. Please start a new conversation.`,
+        429,
+        "MESSAGE_LIMIT_REACHED",
+      );
+    }
 
     // Save user message
     const userMessage = await chatRepository.createMessage({

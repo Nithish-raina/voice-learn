@@ -6,6 +6,7 @@ export default function ConversationList({
   activeId,
   onSelect,
   onCreate,
+  createDisabled,
 }) {
   return (
     <div
@@ -28,19 +29,22 @@ export default function ConversationList({
         <h3 style={{ fontSize: 14, fontWeight: 600 }}>Conversations</h3>
         <button
           onClick={onCreate}
+          disabled={createDisabled}
+          title={createDisabled ? "Conversation limit reached" : "New conversation"}
           style={{
             width: 28,
             height: 28,
             borderRadius: 6,
-            background: C.primaryDim,
-            border: `1px solid ${C.primaryBorder}`,
+            background: createDisabled ? C.card : C.primaryDim,
+            border: `1px solid ${createDisabled ? C.border : C.primaryBorder}`,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            cursor: "pointer",
+            cursor: createDisabled ? "not-allowed" : "pointer",
+            opacity: createDisabled ? 0.5 : 1,
           }}
         >
-          <Plus size={14} color={C.primary} />
+          <Plus size={14} color={createDisabled ? C.textDim : C.primary} />
         </button>
       </div>
 

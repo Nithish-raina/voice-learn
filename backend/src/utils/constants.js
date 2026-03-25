@@ -3,6 +3,11 @@ export const RATE_LIMITS = {
   maxDailySeconds: 1800,
 };
 
+export const CHAT_LIMITS = {
+  maxConversationsPerUser: 5,
+  maxMessagesPerConversation: 10,
+};
+
 export const SM2_DEFAULTS = {
   easeFactor: 2.5,
   intervalDays: 1,
