@@ -2,12 +2,12 @@ import { useState } from "react";
 import { Send } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
-export default function ChatInput({ onSend, sending }) {
+export default function ChatInput({ onSend, sending, disabled }) {
   const [text, setText] = useState("");
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!text.trim() || sending) return;
+    if (!text.trim() || sending || disabled) return;
     onSend(text.trim());
     setText("");
   }
@@ -25,8 +25,8 @@ export default function ChatInput({ onSend, sending }) {
       <input
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Ask about your learnings..."
-        disabled={sending}
+        placeholder={disabled ? "Message limit reached for this conversation" : "Ask about your learnings..."}
+        disabled={sending || disabled}
         style={{
           flex: 1,
           padding: "11px 14px",
@@ -40,14 +40,14 @@ export default function ChatInput({ onSend, sending }) {
       />
       <button
         type="submit"
-        disabled={sending || !text.trim()}
+        disabled={sending || disabled || !text.trim()}
         style={{
           width: 42,
           height: 42,
           borderRadius: 10,
-          background: sending ? C.card : C.primary,
+          background: sending || disabled ? C.card : C.primary,
           border: "none",
-          cursor: sending ? "default" : "pointer",
+          cursor: sending || disabled ? "not-allowed" : "pointer",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

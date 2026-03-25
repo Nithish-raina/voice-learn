@@ -14,6 +14,7 @@ export default function NewRecording() {
   const [subject, setSubject] = useState("Programming");
   const [difficulty, setDifficulty] = useState("intermediate");
   const [sessionId, setSessionId] = useState(null);
+  const [maxRecordingSeconds, setMaxRecordingSeconds] = useState(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [results, setResults] = useState({
@@ -71,6 +72,7 @@ export default function NewRecording() {
       // Start recording directly from the click handler so AudioContext
       // is created within a user gesture (Chrome requires this)
       setSessionId(data.sessionId);
+      setMaxRecordingSeconds(data.maxRecordingSeconds);
       setPhase("recording");
       await start(data.sessionId);
     } catch (err) {
@@ -101,7 +103,13 @@ export default function NewRecording() {
       />
     );
   if (phase === "recording")
-    return <RecordingActive topic={topic} onStop={handleStop} />;
+    return (
+      <RecordingActive
+        topic={topic}
+        maxSeconds={maxRecordingSeconds}
+        onStop={handleStop}
+      />
+    );
   if (phase === "results")
     return (
       <StreamingResults

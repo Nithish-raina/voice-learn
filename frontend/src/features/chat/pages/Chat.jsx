@@ -31,6 +31,9 @@ export default function Chat() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [activeConvId, setActiveConvId] = useState(null);
+  const [error, setError] = useState("");
+  const [convLimitReached, setConvLimitReached] = useState(false);
+  const [msgLimitReached, setMsgLimitReached] = useState(false);
   const {
     messages,
     setMessages,
@@ -49,32 +52,48 @@ export default function Chat() {
 
   function handleSelectConversation(id) {
     setActiveConvId(id);
+    setMsgLimitReached(false);
+    setError("");
     if (isMobile) setDrawerOpen(false);
   }
 
   async function handleCreateConversation() {
+    setError("");
     try {
       const conv = await createConv({});
       setActiveConvId(conv.id);
       setMessages([]);
+      setMsgLimitReached(false);
       refetchConvs();
       if (isMobile) setDrawerOpen(false);
     } catch (err) {
-      console.error("Failed to create conversation:", err);
+      const code = err.response?.data?.error?.code;
+      if (code === "CONVERSATION_LIMIT_REACHED") setConvLimitReached(true);
+      const msg =
+        err.response?.data?.error?.message ||
+        "Failed to create conversation";
+      setError(msg);
     }
   }
 
   async function handleSendMessage(content) {
+    setError("");
     if (!activeConvId) {
       try {
         const conv = await createConv({});
         setActiveConvId(conv.id);
         setMessages([]);
+        setMsgLimitReached(false);
         await refetchConvs();
         setTimeout(() => sendToConversation(conv.id, content), 100);
         return;
       } catch (err) {
-        console.error("Failed to create conversation:", err);
+        const code = err.response?.data?.error?.code;
+        if (code === "CONVERSATION_LIMIT_REACHED") setConvLimitReached(true);
+        const msg =
+          err.response?.data?.error?.message ||
+          "Failed to create conversation";
+        setError(msg);
         return;
       }
     }
@@ -101,7 +120,11 @@ export default function Chat() {
       refetchConvs();
     } catch (err) {
       setMessages((prev) => prev.filter((m) => m.id !== "temp-user"));
-      console.error("Failed to send message:", err);
+      const code = err.response?.data?.error?.code;
+      if (code === "MESSAGE_LIMIT_REACHED") setMsgLimitReached(true);
+      const msg =
+        err.response?.data?.error?.message || "Failed to send message";
+      setError(msg);
     }
   }
 
@@ -165,6 +188,7 @@ export default function Chat() {
             activeId={activeConvId}
             onSelect={handleSelectConversation}
             onCreate={handleCreateConversation}
+            createDisabled={convLimitReached}
           />
         </div>
       ) : (
@@ -228,7 +252,7 @@ export default function Chat() {
 
         {/* Messages or Empty State */}
         {!activeConvId ? (
-          <EmptyChat onCreate={handleCreateConversation} />
+          <EmptyChat onCreate={handleCreateConversation} disabled={convLimitReached} />
         ) : msgsLoading ? (
           <Skeleton><MessagesSkeleton /></Skeleton>
         ) : messages.length === 0 ? (
@@ -280,9 +304,42 @@ export default function Chat() {
           </div>
         )}
 
+        {/* Error banner */}
+        {error && (
+          <div
+            style={{
+              padding: "10px 16px",
+              background: "#fef3c7",
+              border: `1px solid #f59e0b`,
+              borderRadius: 8,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              margin: "8px 0 0",
+            }}
+          >
+            <p style={{ fontSize: 13, color: "#92400e", margin: 0 }}>
+              {error}
+            </p>
+            <button
+              onClick={() => setError("")}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: 2,
+                display: "flex",
+                flexShrink: 0,
+              }}
+            >
+              <X size={14} color="#92400e" />
+            </button>
+          </div>
+        )}
+
         {/* Input */}
         {(activeConvId || conversations.length === 0) && (
-          <ChatInput onSend={handleSendMessage} sending={sending} />
+          <ChatInput onSend={handleSendMessage} sending={sending} disabled={msgLimitReached} />
         )}
       </div>
     </div>

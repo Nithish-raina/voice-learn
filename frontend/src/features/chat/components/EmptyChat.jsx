@@ -1,7 +1,7 @@
 import { MessageSquare, Plus } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
 
-export default function EmptyChat({ onCreate }) {
+export default function EmptyChat({ onCreate, disabled }) {
   return (
     <div
       style={{
@@ -44,21 +44,22 @@ export default function EmptyChat({ onCreate }) {
       </p>
       <button
         onClick={onCreate}
+        disabled={disabled}
         style={{
           padding: "10px 24px",
           borderRadius: 10,
-          background: C.primary,
-          border: "none",
-          color: "#fff",
+          background: disabled ? C.card : C.primary,
+          border: disabled ? `1px solid ${C.border}` : "none",
+          color: disabled ? C.textDim : "#fff",
           fontWeight: 600,
           fontSize: 14,
-          cursor: "pointer",
+          cursor: disabled ? "not-allowed" : "pointer",
           display: "flex",
           alignItems: "center",
           gap: 8,
         }}
       >
-        <Plus size={16} /> Start a conversation
+        <Plus size={16} /> {disabled ? "Conversation limit reached" : "Start a conversation"}
       </button>
     </div>
   );

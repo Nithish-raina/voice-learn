@@ -57,4 +57,14 @@ export const chatRepository = {
   async getMessageCount(conversationId) {
     return prisma.chatMessage.count({ where: { conversationId } });
   },
+
+  async getConversationCount(userId) {
+    return prisma.chatConversation.count({ where: { userId } });
+  },
+
+  async getUserMessageCount(conversationId) {
+    return prisma.chatMessage.count({
+      where: { conversationId, role: "user" },
+    });
+  },
 };
