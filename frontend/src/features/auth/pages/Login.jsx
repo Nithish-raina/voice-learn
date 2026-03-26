@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../context/AuthContext";
 import { Brain } from "lucide-react";
 import { C } from "../../../shared/styles/colors";
+import CookieBanner from "../../../shared/components/CookieBanner";
 
 const inputStyle = {
   width: "100%",
@@ -20,6 +21,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showCookieBanner, setShowCookieBanner] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -31,13 +33,22 @@ export default function Login() {
       await login(email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.error?.message || "Login failed");
+      const code = err.response?.data?.error?.code;
+      if (code === "CSRF_MISSING" || code === "CSRF_INVALID") {
+        setShowCookieBanner(true);
+      } else {
+        setError(err.response?.data?.error?.message || "Login failed");
+      }
     } finally {
       setLoading(false);
     }
   }
 
   return (
+    <Fragment>
+      {showCookieBanner && (
+        <CookieBanner onClose={() => setShowCookieBanner(false)} />
+      )}
     <div
       style={{
         display: "flex",
@@ -181,5 +192,6 @@ export default function Login() {
         </p>
       </form>
     </div>
+    </Fragment>
   );
 }

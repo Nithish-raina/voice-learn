@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCreateSession } from "../hooks/useCreateSession";
 import { useRecording } from "../hooks/useRecording";
@@ -14,6 +14,7 @@ export default function NewRecording() {
   const [subject, setSubject] = useState("Programming");
   const [difficulty, setDifficulty] = useState("intermediate");
   const [sessionId, setSessionId] = useState(null);
+  const sessionIdRef = useRef(null);
   const [maxRecordingSeconds, setMaxRecordingSeconds] = useState(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -47,7 +48,7 @@ export default function NewRecording() {
     onResults(data) {
       setResults((prev) => {
         const final = { ...prev, ...data };
-        navigate(`/sessions/${sessionId}`, {
+        navigate(`/sessions/${sessionIdRef.current}`, {
           replace: true,
           state: { streamedResults: final },
         });
@@ -72,6 +73,7 @@ export default function NewRecording() {
       // Start recording directly from the click handler so AudioContext
       // is created within a user gesture (Chrome requires this)
       setSessionId(data.sessionId);
+      sessionIdRef.current = data.sessionId;
       setMaxRecordingSeconds(data.maxRecordingSeconds);
       setPhase("recording");
       await start(data.sessionId);
