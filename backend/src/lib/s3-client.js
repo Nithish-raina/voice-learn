@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import logger from "./logger.js";
 
 export const s3 = new S3Client({
   region: process.env.AWS_REGION,
@@ -25,7 +26,7 @@ export async function generatePresignedUploadUrl(userId, sessionId) {
 
     return { url, key };
   } catch (error) {
-    console.error("[S3] Failed to generate presigned URL:", error.message);
+    logger.error({ err: error }, "Failed to generate presigned URL");
     throw new Error("Unable to prepare audio upload. Please try again.");
   }
 }

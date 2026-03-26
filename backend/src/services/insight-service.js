@@ -1,5 +1,6 @@
 import { sessionRepository } from "../repositories/session-repository.js";
 import { AppError } from "../utils/errors.js";
+import logger from "../lib/logger.js";
 
 function calculateStreak(dates) {
   if (dates.length === 0) return { current: 0, longest: 0 };
@@ -63,6 +64,7 @@ function buildHeatmap(sessions, days) {
 
 export const insightService = {
   async getInsights(userId) {
+    logger.debug({ userId }, "Building insights data");
     let allSessions;
     try {
       allSessions = await sessionRepository.getCompletedSessions(userId);

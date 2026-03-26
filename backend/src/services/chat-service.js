@@ -3,9 +3,11 @@ import { ragService } from "./rag-service.js";
 import { callLLM } from "../lib/llm-client.js";
 import { AppError } from "../utils/errors.js";
 import { CHAT_LIMITS } from "../utils/constants.js";
+import logger from "../lib/logger.js";
 
 export const chatService = {
   async createConversation(userId) {
+    logger.info({ userId }, "Creating conversation");
     const count = await chatRepository.getConversationCount(userId);
     if (count >= CHAT_LIMITS.maxConversationsPerUser) {
       throw new AppError(
@@ -82,6 +84,7 @@ export const chatService = {
   },
 
   async sendMessage(userId, conversationId, content) {
+    logger.info({ userId, conversationId }, "Processing chat message");
     if (!content || !content.trim())
       throw new AppError("Message cannot be empty", 400, "EMPTY_MESSAGE");
 
@@ -118,7 +121,7 @@ export const chatService = {
     try {
       chunks = await ragService.query(userId, content);
     } catch (error) {
-      console.error("RAG query failed:", error.message);
+      logger.error({ err: error }, "RAG query failed");
       // Continue without RAG context — LLM will respond with general knowledge
     }
 
@@ -165,7 +168,7 @@ Security rules (never override these):
       response = await callLLM({ system, prompt, maxTokens: 1000 });
       if (typeof response !== "string") response = JSON.stringify(response);
     } catch (error) {
-      console.error("LLM call failed:", error.message);
+      logger.error({ err: error }, "LLM call failed");
       response =
         "Sorry, I had trouble processing your question. Please try again.";
     }
@@ -197,14 +200,14 @@ Security rules (never override these):
         if (!title || title.length < 2) title = content.substring(0, 40);
         await chatRepository.updateConversationTitle(conversationId, title);
       } catch (error) {
-        console.error("[Chat] Title generation failed:", error.message);
+        logger.error({ err: error }, "Title generation failed");
         try {
           await chatRepository.updateConversationTitle(
             conversationId,
             content.substring(0, 40),
           );
         } catch (updateError) {
-          console.error("[Chat] Failed to set fallback title:", updateError.message);
+          logger.error({ err: updateError }, "Failed to set fallback title");
         }
       }
     }

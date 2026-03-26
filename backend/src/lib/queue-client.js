@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { bullConnection } from "./redis-client.js";
+import logger from "./logger.js";
 
 export const ragQueue = new Queue("rag-indexing", {
   connection: bullConnection,
@@ -21,5 +22,5 @@ export const ragQueue = new Queue("rag-indexing", {
 });
 
 ragQueue.on("error", (err) => {
-  console.error("[Queue] RAG queue error:", err.message);
+  logger.error({ err }, "RAG queue error");
 });

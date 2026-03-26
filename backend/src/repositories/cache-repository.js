@@ -1,12 +1,13 @@
 // cache repository for caching data in redis
 import { redis } from "../lib/redis-client.js";
+import logger from "../lib/logger.js";
 
 export const cacheRepository = {
   async get(key) {
     try {
       return await redis.get(key);
     } catch (error) {
-      console.error(`[Cache] Failed to get key "${key}":`, error.message);
+      logger.error({ err: error, key }, "Failed to get cache key");
       return null;
     }
   },
@@ -15,7 +16,7 @@ export const cacheRepository = {
     try {
       return await redis.set(key, value);
     } catch (error) {
-      console.error(`[Cache] Failed to set key "${key}":`, error.message);
+      logger.error({ err: error, key }, "Failed to set cache key");
     }
   },
 
@@ -23,7 +24,7 @@ export const cacheRepository = {
     try {
       return await redis.set(key, value, "EX", ttlSeconds);
     } catch (error) {
-      console.error(`[Cache] Failed to set key "${key}" with TTL:`, error.message);
+      logger.error({ err: error, key, ttlSeconds }, "Failed to set cache key with TTL");
     }
   },
 
@@ -31,7 +32,7 @@ export const cacheRepository = {
     try {
       return await redis.incrby(key, amount);
     } catch (error) {
-      console.error(`[Cache] Failed to increment key "${key}":`, error.message);
+      logger.error({ err: error, key }, "Failed to increment cache key");
       return null;
     }
   },
@@ -40,7 +41,7 @@ export const cacheRepository = {
     try {
       return await redis.del(key);
     } catch (error) {
-      console.error(`[Cache] Failed to delete key "${key}":`, error.message);
+      logger.error({ err: error, key }, "Failed to delete cache key");
     }
   },
 
@@ -48,7 +49,7 @@ export const cacheRepository = {
     try {
       return await redis.ttl(key);
     } catch (error) {
-      console.error(`[Cache] Failed to get TTL for key "${key}":`, error.message);
+      logger.error({ err: error, key }, "Failed to get TTL for cache key");
       return -1;
     }
   },

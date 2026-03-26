@@ -1,9 +1,11 @@
 // user service for handling business logic related to users
 import { userRepository } from "../repositories/user-repository.js";
 import { AppError } from "../utils/errors.js";
+import logger from "../lib/logger.js";
 
 export const userService = {
   async getProfile(userId) {
+    logger.debug({ userId }, "Fetching user profile");
     const user = await userRepository.findById(userId);
     if (!user) {
       throw new AppError("User not found", 404, "USER_NOT_FOUND");

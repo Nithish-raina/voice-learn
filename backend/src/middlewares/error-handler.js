@@ -1,5 +1,6 @@
 // global error handler middleware
 import { AppError } from "../utils/errors.js";
+import logger from "../lib/logger.js";
 
 export function errorHandler(err, req, res, next) {
   // Prisma unique constraint violation
@@ -58,7 +59,7 @@ export function errorHandler(err, req, res, next) {
   }
 
   // Unknown errors
-  console.error("Unhandled error:", err);
+  logger.error({ err }, "Unhandled error");
   return res.status(500).json({
     status: "error",
     error: {

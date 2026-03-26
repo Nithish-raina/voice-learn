@@ -2,6 +2,7 @@
 import { sessionService } from "../services/session-service.js";
 import { rateLimitService } from "../services/ratelimit-service.js";
 import { AppError } from "../utils/errors.js";
+import logger from "../lib/logger.js";
 
 export const sessionController = {
   async create(req, res, next) {
@@ -11,6 +12,7 @@ export const sessionController = {
       }
 
       const { topic, subject, difficulty } = req.body;
+      logger.info({ userId: req.userId, topic, subject, difficulty }, "Session create request received");
 
       if (!topic || !subject) {
         throw new AppError(
@@ -24,6 +26,7 @@ export const sessionController = {
       const { maxRecordingSeconds } = await rateLimitService.checkLimits(
         req.userId,
       );
+      logger.debug({ userId: req.userId, maxRecordingSeconds }, "Rate limit check passed");
 
       // Create session
       const result = await sessionService.create(req.userId, {
@@ -32,6 +35,7 @@ export const sessionController = {
         difficulty,
       });
 
+      logger.info({ userId: req.userId, sessionId: result.sessionId, topic }, "Session created");
       return res.status(201).json({
         status: "success",
         data: {
@@ -41,6 +45,7 @@ export const sessionController = {
         },
       });
     } catch (error) {
+      logger.error({ userId: req.userId, err: error }, "Session create failed");
       next(error);
     }
   },
@@ -55,6 +60,7 @@ export const sessionController = {
         throw new AppError("Session ID is required", 400, "MISSING_SESSION_ID");
       }
 
+      logger.debug({ userId: req.userId, sessionId: req.params.id }, "Session getById request");
       const session = await sessionService.getById(req.userId, req.params.id);
 
       return res.status(200).json({
@@ -62,6 +68,7 @@ export const sessionController = {
         data: session,
       });
     } catch (error) {
+      logger.error({ userId: req.userId, sessionId: req.params?.id, err: error }, "Session getById failed");
       next(error);
     }
   },
@@ -73,6 +80,7 @@ export const sessionController = {
       }
 
       const { subject, search, sort, page, limit } = req.query;
+      logger.debug({ userId: req.userId, subject, search, sort, page, limit }, "Session list request");
 
       // Validate pagination parameters
       if (page) {
@@ -110,6 +118,7 @@ export const sessionController = {
         data: result,
       });
     } catch (error) {
+      logger.error({ userId: req.userId, err: error }, "Session list failed");
       next(error);
     }
   },

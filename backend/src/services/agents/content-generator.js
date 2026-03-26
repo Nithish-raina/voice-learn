@@ -1,4 +1,5 @@
 import { callLLM } from "../../lib/llm-client.js";
+import logger from "../../lib/logger.js";
 
 export async function generateContent({
   concepts,
@@ -43,7 +44,7 @@ Return this exact JSON structure:
   try {
     return await callLLM({ system, prompt, maxTokens: 1500 });
   } catch (error) {
-    console.error("[ContentGenerator] Failed:", error.message);
+    logger.error({ err: error }, "Content generation failed");
     throw new Error("Failed to generate study content.");
   }
 }

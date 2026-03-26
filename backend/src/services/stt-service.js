@@ -1,5 +1,6 @@
 // service for handling speech-to-text via Deepgram WebSocket
 import WebSocket from "ws";
+import logger from "../lib/logger.js";
 
 const DEEPGRAM_URL = "wss://api.deepgram.com/v1/listen";
 const CONNECTION_TIMEOUT_MS = 10000;
@@ -13,11 +14,12 @@ export function createDeepgramStream(options = {}) {
     sampleRate = 16000,
   } = options;
 
+  logger.info({ sampleRate }, "Creating Deepgram stream");
+
   if (!process.env.DEEPGRAM_API_KEY) {
     const error = new Error("Deepgram API key is not configured");
-    console.error("[STT]", error.message);
+    logger.error("Deepgram API key is not configured");
     if (onError) onError(error);
-    // Return a no-op stream so callers don't crash
     return {
       sendAudio() {},
       close() {},
@@ -40,13 +42,14 @@ export function createDeepgramStream(options = {}) {
 
   let dgWs;
   try {
+    logger.debug({ model: "nova-2", sampleRate, encoding: "linear16" }, "Connecting to Deepgram WebSocket");
     dgWs = new WebSocket(`${DEEPGRAM_URL}?${params.toString()}`, {
       headers: {
         Authorization: `Token ${process.env.DEEPGRAM_API_KEY}`,
       },
     });
   } catch (error) {
-    console.error("[STT] Failed to create Deepgram WebSocket:", error.message);
+    logger.error({ err: error }, "Failed to create Deepgram WebSocket");
     if (onError) onError(error);
     return {
       sendAudio() {},
@@ -61,18 +64,20 @@ export function createDeepgramStream(options = {}) {
   let lastInterim = "";
   let isOpen = false;
   let connectionTimedOut = false;
+  let chunksSent = 0;
+  const connectStartTime = Date.now();
 
   // Timeout if Deepgram doesn't connect within threshold
   const connectionTimer = setTimeout(() => {
     if (!isOpen) {
       connectionTimedOut = true;
-      console.error("[STT] Deepgram connection timed out");
+      logger.error({ timeoutMs: CONNECTION_TIMEOUT_MS }, "Deepgram connection timed out");
       const error = new Error("Speech-to-text service connection timed out");
       if (onError) onError(error);
       try {
         dgWs.close();
       } catch (e) {
-        console.error("[STT] Error closing timed-out connection:", e.message);
+        logger.error({ err: e }, "Error closing timed-out Deepgram connection");
       }
     }
   }, CONNECTION_TIMEOUT_MS);
@@ -80,7 +85,8 @@ export function createDeepgramStream(options = {}) {
   dgWs.on("open", () => {
     clearTimeout(connectionTimer);
     isOpen = true;
-    console.log("[STT] Deepgram stream opened");
+    const connectElapsed = Date.now() - connectStartTime;
+    logger.info({ connectMs: connectElapsed }, "Deepgram stream opened");
     if (onOpen) onOpen();
   });
 
@@ -96,6 +102,7 @@ export function createDeepgramStream(options = {}) {
           if (isFinal) {
             fullTranscript += (fullTranscript ? " " : "") + transcript.trim();
             lastInterim = "";
+            logger.debug({ transcriptLength: fullTranscript.length, isFinal }, "Deepgram final transcript chunk");
           } else {
             lastInterim = transcript.trim();
           }
@@ -111,24 +118,24 @@ export function createDeepgramStream(options = {}) {
           }
         }
       } else if (response.type === "Error") {
-        console.error("[STT] Deepgram returned error:", response.description || response.message);
+        logger.error({ description: response.description || response.message }, "Deepgram returned error");
         if (onError) onError(new Error(response.description || "Speech-to-text service error"));
       }
     } catch (error) {
-      console.error("[STT] Failed to parse Deepgram message:", error.message);
+      logger.error({ err: error }, "Failed to parse Deepgram message");
     }
   });
 
   dgWs.on("error", (error) => {
     clearTimeout(connectionTimer);
-    console.error("[STT] Deepgram stream error:", error.message);
+    logger.error({ err: error }, "Deepgram stream error");
     if (onError) onError(error);
   });
 
   dgWs.on("unexpected-response", (req, res) => {
     clearTimeout(connectionTimer);
     const statusCode = res.statusCode;
-    console.error(`[STT] Deepgram unexpected response: HTTP ${statusCode}`);
+    logger.error({ statusCode }, "Deepgram unexpected response");
     let errorMsg = "Speech-to-text service is unavailable";
     if (statusCode === 401 || statusCode === 403) {
       errorMsg = "Speech-to-text service authentication failed";
@@ -142,7 +149,7 @@ export function createDeepgramStream(options = {}) {
     clearTimeout(connectionTimer);
     isOpen = false;
     const reasonStr = reason ? reason.toString() : "";
-    console.log(`[STT] Deepgram stream closed: code=${code} reason=${reasonStr}`);
+    logger.info({ code, reason: reasonStr, totalChunksSent: chunksSent, finalTranscriptLength: fullTranscript.length }, "Deepgram stream closed");
     if (closeResolve) closeResolve();
     if (onClose) onClose();
   });
@@ -152,8 +159,9 @@ export function createDeepgramStream(options = {}) {
       if (isOpen && dgWs.readyState === WebSocket.OPEN) {
         try {
           dgWs.send(chunk);
+          chunksSent++;
         } catch (error) {
-          console.error("[STT] Failed to send audio chunk:", error.message);
+          logger.error({ err: error, chunksSent }, "Failed to send audio chunk");
         }
       }
     },
@@ -161,9 +169,10 @@ export function createDeepgramStream(options = {}) {
     close() {
       if (isOpen && dgWs.readyState === WebSocket.OPEN) {
         try {
+          logger.debug({ chunksSent }, "Sending Deepgram CloseStream");
           dgWs.send(JSON.stringify({ type: "CloseStream" }));
         } catch (error) {
-          console.error("[STT] Failed to send close command:", error.message);
+          logger.error({ err: error }, "Failed to send close command");
         }
       }
     },
@@ -177,9 +186,10 @@ export function createDeepgramStream(options = {}) {
         }
         closeResolve = resolve;
         try {
+          logger.debug({ chunksSent, timeoutMs }, "Sending Deepgram CloseStream and waiting");
           dgWs.send(JSON.stringify({ type: "CloseStream" }));
         } catch (error) {
-          console.error("[STT] Failed to send close command:", error.message);
+          logger.error({ err: error }, "Failed to send close command");
           resolve();
           return;
         }

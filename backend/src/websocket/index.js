@@ -2,6 +2,7 @@ import { WebSocketServer } from "ws";
 import { verifyAccessToken } from "../utils/jwt.js";
 import { sessionHandler } from "./session-handler.js";
 import { prisma } from "../lib/prisma-client.js";
+import logger from "../lib/logger.js";
 
 export function setupWebSocket(server) {
   const wss = new WebSocketServer({ noServer: true });
@@ -45,7 +46,7 @@ export function setupWebSocket(server) {
           where: { id: sessionId },
         });
       } catch (error) {
-        console.error("[WS] Database error looking up session:", error.message);
+        logger.error({ err: error, sessionId }, "WS database error looking up session");
         ws.close(4000, "Unable to verify session. Please try again.");
         return;
       }
@@ -65,14 +66,14 @@ export function setupWebSocket(server) {
         return;
       }
 
-      console.log(`[WS] Connected: session=${sessionId} user=${userId}`);
+      logger.info({ sessionId, userId }, "WS connected");
       sessionHandler(ws, { sessionId, userId, session });
     } catch (error) {
-      console.error("[WS] Connection error:", error.message);
+      logger.error({ err: error }, "WS connection error");
       ws.close(4000, "Connection failed. Please try again.");
     }
   });
 
-  console.log("WebSocket server ready");
+  logger.info("WebSocket server ready");
   return wss;
 }

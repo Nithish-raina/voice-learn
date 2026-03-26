@@ -3,35 +3,37 @@ import { Worker } from "bullmq";
 import Redis from "ioredis";
 import { ragIndexingService } from "./src/services/rag-indexing-service.js";
 import { ragIndexJobsRepository } from "./src/repositories/rag-index-jobs-repository.js";
+import logger from "./src/lib/logger.js";
 
 const connection = new Redis(process.env.REDIS_URL, {
   maxRetriesPerRequest: null,
   retryStrategy(times) {
     const delay = Math.min(times * 200, 5000);
-    console.warn(`[Worker:Redis] Reconnecting in ${delay}ms (attempt ${times})`);
+    logger.warn({ delay, attempt: times }, "Worker Redis reconnecting");
     return delay;
   },
 });
 
 connection.on("error", (err) => {
-  console.error("[Worker:Redis] Connection error:", err.message);
+  logger.error({ err }, "Worker Redis connection error");
 });
 
 connection.on("connect", () => {
-  console.log("[Worker:Redis] Connected");
+  logger.info("Worker Redis connected");
 });
 
 const worker = new Worker(
   "rag-indexing",
   async (job) => {
     const { sessionId } = job.data;
-    console.log(`\n[Worker] Processing job ${job.id} — session: ${sessionId}`);
+    const log = logger.child({ jobId: job.id, sessionId });
+    log.info("Processing job");
 
     let ragJob;
     try {
       ragJob = await ragIndexJobsRepository.findBySessionId(sessionId);
     } catch (error) {
-      console.error(`[Worker] Failed to find RAG job for session ${sessionId}:`, error.message);
+      log.error({ err: error }, "Failed to find RAG job");
     }
 
     if (ragJob) {
@@ -41,7 +43,7 @@ const worker = new Worker(
           startedAt: new Date(),
         });
       } catch (error) {
-        console.error(`[Worker] Failed to update job status to indexing:`, error.message);
+        log.error({ err: error }, "Failed to update job status to indexing");
       }
     }
 
@@ -57,16 +59,14 @@ const worker = new Worker(
             completedAt: new Date(),
           });
         } catch (error) {
-          console.error(`[Worker] Failed to update job status to completed:`, error.message);
+          log.error({ err: error }, "Failed to update job status to completed");
         }
       }
 
-      console.log(
-        `[Worker] Job ${job.id} completed — ${result.chunksIndexed} chunks indexed`,
-      );
+      log.info({ chunksIndexed: result.chunksIndexed }, "Job completed");
       return result;
     } catch (error) {
-      console.error(`[Worker] Job ${job.id} failed:`, error.message);
+      log.error({ err: error }, "Job failed");
 
       // Update job status to failed
       if (ragJob) {
@@ -77,7 +77,7 @@ const worker = new Worker(
             completedAt: new Date(),
           });
         } catch (updateError) {
-          console.error(`[Worker] Failed to update job status to failed:`, updateError.message);
+          log.error({ err: updateError }, "Failed to update job status to failed");
         }
       }
 
@@ -91,15 +91,15 @@ const worker = new Worker(
 );
 
 worker.on("completed", (job, result) => {
-  console.log(`[Worker] Job ${job.id} finished successfully:`, result);
+  logger.info({ jobId: job.id, result }, "Job finished successfully");
 });
 
 worker.on("failed", (job, err) => {
-  console.error(`[Worker] Job ${job?.id} failed permanently:`, err.message);
+  logger.error({ jobId: job?.id, err }, "Job failed permanently");
 });
 
 worker.on("error", (err) => {
-  console.error("[Worker] Worker error:", err.message);
+  logger.error({ err }, "Worker error");
 });
 
-console.log("[Worker] RAG indexing worker started, waiting for jobs...");
+logger.info("RAG indexing worker started, waiting for jobs...");
