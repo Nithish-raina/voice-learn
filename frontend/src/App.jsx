@@ -15,12 +15,9 @@ import Chat from "./features/chat/pages/Chat";
 import Insights from "./features/insights/pages/Insights";
 import Settings from "./features/settings/pages/Settings";
 import NotFound from "./shared/components/NotFound";
-import CookieBanner from "./shared/components/CookieBanner";
-
 export default function App() {
   return (
     <BrowserRouter>
-      <CookieBanner />
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Landing />} />

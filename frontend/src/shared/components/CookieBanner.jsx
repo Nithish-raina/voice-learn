@@ -1,27 +1,6 @@
-import { useState, useEffect } from "react";
 import { C } from "../styles/colors";
 
-function areCookiesEnabled() {
-  try {
-    document.cookie = "vl_cookie_test=1; SameSite=Lax; path=/";
-    const enabled = document.cookie.includes("vl_cookie_test=1");
-    document.cookie =
-      "vl_cookie_test=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-    return enabled;
-  } catch {
-    return false;
-  }
-}
-
-export default function CookieBanner() {
-  const [blocked, setBlocked] = useState(false);
-
-  useEffect(() => {
-    if (!areCookiesEnabled()) setBlocked(true);
-  }, []);
-
-  if (!blocked) return null;
-
+export default function CookieBanner({ onClose }) {
   return (
     <div
       style={{
@@ -46,9 +25,32 @@ export default function CookieBanner() {
           padding: 24,
         }}
       >
-        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-          Cookies are required
-        </h3>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 8,
+          }}
+        >
+          <h3 style={{ fontSize: 18, fontWeight: 700 }}>
+            Cookies are required
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: C.textDim,
+              fontSize: 20,
+              cursor: "pointer",
+              padding: 4,
+              lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
+        </div>
         <p
           style={{
             fontSize: 14,
@@ -102,22 +104,6 @@ export default function CookieBanner() {
           </p>
         </div>
 
-        <button
-          onClick={() => window.location.reload()}
-          style={{
-            width: "100%",
-            padding: "12px 0",
-            borderRadius: 10,
-            border: "none",
-            background: C.primary,
-            color: "#fff",
-            fontWeight: 600,
-            fontSize: 14,
-            cursor: "pointer",
-          }}
-        >
-          I've enabled cookies — reload
-        </button>
       </div>
     </div>
   );
