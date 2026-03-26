@@ -2,6 +2,10 @@
 
 You learn best when you explain things out loud. VoiceLearn lets you record yourself explaining any topic, then tells you what you got right, what you missed, and helps you remember it all.
 
+## Screenshot
+
+![Voice-learn](docs/output/voice-learn.png)
+
 ## How it works
 
 1. Pick a topic — like "How HTTP Works" or "Photosynthesis"
