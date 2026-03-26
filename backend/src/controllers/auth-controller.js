@@ -55,7 +55,10 @@ export const authController = {
       logger.info("Google auth request received");
       const { code } = req.body;
       const result = await authService.googleAuth({ code });
-      logger.info({ userId: result.user.id, isNewUser: result.isNewUser }, "Google auth successful");
+      logger.info(
+        { userId: result.user.id, isNewUser: result.isNewUser },
+        "Google auth successful",
+      );
 
       res.cookie("refreshToken", result.refreshToken, COOKIE_OPTIONS);
 
@@ -106,7 +109,7 @@ export const authController = {
 
       res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
         path: "/",
       });
@@ -132,7 +135,7 @@ export const authController = {
 
       res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
         path: "/",
       });
@@ -157,7 +160,7 @@ export const authController = {
 
       res.cookie("csrfToken", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: true,
         sameSite: "none",
         maxAge: CSRF_TTL * 1000,
         path: "/",
